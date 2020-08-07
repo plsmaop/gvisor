@@ -21,6 +21,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/buffer"
+	"gvisor.dev/gvisor/pkg/tcpip/checker"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/link/channel"
 	"gvisor.dev/gvisor/pkg/tcpip/network/testutil"
@@ -301,11 +302,39 @@ func TestReceiveIPv6ExtHdrs(t *testing.T) {
 		name         string
 		extHdr       func(nextHdr uint8) ([]byte, uint8)
 		shouldAccept bool
+		// Should we expect an ICMP response and if so, with what contents?
+		expectICMP bool
+		ICMPType   header.ICMPv6Type
+		ICMPCode   header.ICMPv6Code
+		Pointer    uint16
 	}{
 		{
 			name:         "None",
 			extHdr:       func(nextHdr uint8) ([]byte, uint8) { return []byte{}, nextHdr },
 			shouldAccept: true,
+			expectICMP:   false,
+		},
+		{
+			name: "hopbyhop not first",
+			extHdr: func(nextHdr uint8) ([]byte, uint8) {
+				return []byte{
+					// Routing extension header.
+					hopByHopExtHdrID, 0, 1, 0, 2, 3, 4, 5,
+
+					nextHdr, 1,
+
+					// Skippable unknown.
+					63, 4, 1, 2, 3, 4,
+
+					// Skippable unknown.
+					62, 6, 1, 2, 3, 4, 5, 6,
+				}, routingExtHdrID
+			},
+			shouldAccept: false,
+			expectICMP:   true,
+			ICMPType:     header.ICMPv6ParamProblem,
+			ICMPCode:     header.ICMPv6UnknownHeader,
+			Pointer:      50,
 		},
 		{
 			name: "hopbyhop with unknown option skippable action",
@@ -321,6 +350,7 @@ func TestReceiveIPv6ExtHdrs(t *testing.T) {
 				}, hopByHopExtHdrID
 			},
 			shouldAccept: true,
+			expectICMP:   false,
 		},
 		{
 			name: "hopbyhop with unknown option discard action",
@@ -336,6 +366,7 @@ func TestReceiveIPv6ExtHdrs(t *testing.T) {
 				}, hopByHopExtHdrID
 			},
 			shouldAccept: false,
+			expectICMP:   false,
 		},
 		{
 			name: "hopbyhop with unknown option discard and send icmp action",
@@ -351,6 +382,10 @@ func TestReceiveIPv6ExtHdrs(t *testing.T) {
 				}, hopByHopExtHdrID
 			},
 			shouldAccept: false,
+			expectICMP:   true,
+			ICMPType:     header.ICMPv6ParamProblem,
+			ICMPCode:     header.ICMPv6UnknownOption,
+			Pointer:      42,
 		},
 		{
 			name: "hopbyhop with unknown option discard and send icmp action unless multicast dest",
@@ -367,36 +402,49 @@ func TestReceiveIPv6ExtHdrs(t *testing.T) {
 				}, hopByHopExtHdrID
 			},
 			shouldAccept: false,
+			expectICMP:   true,
+			ICMPType:     header.ICMPv6ParamProblem,
+			ICMPCode:     header.ICMPv6UnknownOption,
+			Pointer:      42,
 		},
 		{
 			name:         "routing with zero segments left",
 			extHdr:       func(nextHdr uint8) ([]byte, uint8) { return []byte{nextHdr, 0, 1, 0, 2, 3, 4, 5}, routingExtHdrID },
 			shouldAccept: true,
+			expectICMP:   false,
 		},
 		{
 			name:         "routing with non-zero segments left",
 			extHdr:       func(nextHdr uint8) ([]byte, uint8) { return []byte{nextHdr, 0, 1, 1, 2, 3, 4, 5}, routingExtHdrID },
 			shouldAccept: false,
+			expectICMP:   true,
+			ICMPType:     header.ICMPv6ParamProblem,
+			ICMPCode:     header.ICMPv6ErroneousHeader,
+			Pointer:      42,
 		},
 		{
 			name:         "atomic fragment with zero ID",
 			extHdr:       func(nextHdr uint8) ([]byte, uint8) { return []byte{nextHdr, 0, 0, 0, 0, 0, 0, 0}, fragmentExtHdrID },
 			shouldAccept: true,
+			expectICMP:   false,
 		},
 		{
 			name:         "atomic fragment with non-zero ID",
 			extHdr:       func(nextHdr uint8) ([]byte, uint8) { return []byte{nextHdr, 0, 0, 0, 1, 2, 3, 4}, fragmentExtHdrID },
 			shouldAccept: true,
+			expectICMP:   false,
 		},
 		{
 			name:         "fragment",
 			extHdr:       func(nextHdr uint8) ([]byte, uint8) { return []byte{nextHdr, 0, 1, 0, 1, 2, 3, 4}, fragmentExtHdrID },
 			shouldAccept: false,
+			expectICMP:   false,
 		},
 		{
 			name:         "No next header",
 			extHdr:       func(nextHdr uint8) ([]byte, uint8) { return []byte{}, noNextHdrID },
 			shouldAccept: false,
+			expectICMP:   false,
 		},
 		{
 			name: "destination with unknown option skippable action",
@@ -412,6 +460,7 @@ func TestReceiveIPv6ExtHdrs(t *testing.T) {
 				}, destinationExtHdrID
 			},
 			shouldAccept: true,
+			expectICMP:   false,
 		},
 		{
 			name: "destination with unknown option discard action",
@@ -427,6 +476,7 @@ func TestReceiveIPv6ExtHdrs(t *testing.T) {
 				}, destinationExtHdrID
 			},
 			shouldAccept: false,
+			expectICMP:   false,
 		},
 		{
 			name: "destination with unknown option discard and send icmp action",
@@ -442,6 +492,10 @@ func TestReceiveIPv6ExtHdrs(t *testing.T) {
 				}, destinationExtHdrID
 			},
 			shouldAccept: false,
+			expectICMP:   true,
+			ICMPType:     header.ICMPv6ParamProblem,
+			ICMPCode:     header.ICMPv6UnknownOption,
+			Pointer:      42,
 		},
 		{
 			name: "destination with unknown option discard and send icmp action unless multicast dest",
@@ -458,6 +512,10 @@ func TestReceiveIPv6ExtHdrs(t *testing.T) {
 				}, destinationExtHdrID
 			},
 			shouldAccept: false,
+			expectICMP:   true,
+			ICMPType:     header.ICMPv6ParamProblem,
+			ICMPCode:     header.ICMPv6UnknownOption,
+			Pointer:      42,
 		},
 		{
 			name: "routing - atomic fragment",
@@ -471,6 +529,7 @@ func TestReceiveIPv6ExtHdrs(t *testing.T) {
 				}, routingExtHdrID
 			},
 			shouldAccept: true,
+			expectICMP:   false,
 		},
 		{
 			name: "atomic fragment - routing",
@@ -484,6 +543,7 @@ func TestReceiveIPv6ExtHdrs(t *testing.T) {
 				}, fragmentExtHdrID
 			},
 			shouldAccept: true,
+			expectICMP:   false,
 		},
 		{
 			name: "hop by hop (with skippable unknown) - routing",
@@ -497,6 +557,7 @@ func TestReceiveIPv6ExtHdrs(t *testing.T) {
 				}, hopByHopExtHdrID
 			},
 			shouldAccept: true,
+			expectICMP:   false,
 		},
 		{
 			name: "routing - hop by hop (with skippable unknown)",
@@ -510,11 +571,16 @@ func TestReceiveIPv6ExtHdrs(t *testing.T) {
 				}, routingExtHdrID
 			},
 			shouldAccept: false,
+			expectICMP:   true,
+			ICMPType:     header.ICMPv6ParamProblem,
+			ICMPCode:     header.ICMPv6UnknownHeader,
+			Pointer:      50,
 		},
 		{
 			name:         "No next header",
 			extHdr:       func(nextHdr uint8) ([]byte, uint8) { return []byte{}, noNextHdrID },
 			shouldAccept: false,
+			expectICMP:   false,
 		},
 		{
 			name: "hopbyhop (with skippable unknown) - routing - atomic fragment - destination (with skippable unknown)",
@@ -534,6 +600,7 @@ func TestReceiveIPv6ExtHdrs(t *testing.T) {
 				}, hopByHopExtHdrID
 			},
 			shouldAccept: true,
+			expectICMP:   false,
 		},
 		{
 			name: "hopbyhop (with discard unknown) - routing - atomic fragment - destination (with skippable unknown)",
@@ -553,6 +620,7 @@ func TestReceiveIPv6ExtHdrs(t *testing.T) {
 				}, hopByHopExtHdrID
 			},
 			shouldAccept: false,
+			expectICMP:   false,
 		},
 		{
 			name: "hopbyhop (with skippable unknown) - routing - atomic fragment - destination (with discard unknown)",
@@ -573,6 +641,7 @@ func TestReceiveIPv6ExtHdrs(t *testing.T) {
 				}, hopByHopExtHdrID
 			},
 			shouldAccept: false,
+			expectICMP:   false,
 		},
 	}
 
@@ -582,13 +651,21 @@ func TestReceiveIPv6ExtHdrs(t *testing.T) {
 				NetworkProtocols:   []stack.NetworkProtocol{NewProtocol()},
 				TransportProtocols: []stack.TransportProtocol{udp.NewProtocol()},
 			})
-			e := channel.New(0, 1280, linkAddr1)
+			e := channel.New(4, 1280, linkAddr1)
 			if err := s.CreateNIC(nicID, e); err != nil {
 				t.Fatalf("CreateNIC(%d, _) = %s", nicID, err)
 			}
 			if err := s.AddAddress(nicID, ProtocolNumber, addr2); err != nil {
 				t.Fatalf("AddAddress(%d, %d, %s) = %s", nicID, ProtocolNumber, addr2, err)
 			}
+
+			// Add a default route so that a return packet knows where to go.
+			s.SetRouteTable([]tcpip.Route{
+				{
+					Destination: header.IPv6EmptySubnet,
+					NIC:         nicID,
+				},
+			})
 
 			wq := waiter.Queue{}
 			we, ch := waiter.NewChannelEntry(nil)
@@ -650,15 +727,53 @@ func TestReceiveIPv6ExtHdrs(t *testing.T) {
 					t.Errorf("got UDP Rx Packets = %d, want = 0", got)
 				}
 
+				if !test.expectICMP {
+					if p, ok := e.Read(); ok {
+						t.Fatalf("unexpected packet received: %+v", p)
+					}
+					return
+				}
+				// ICMP required.
+				p, ok := e.Read()
+				if !ok {
+					t.Fatalf("expected packet wasn't written out")
+					return
+				}
+
+				// Pack the output packet into a single buffer.View.
+				vv := buffer.NewVectorisedView(p.Pkt.Size(), p.Pkt.Views())
+				pkt := vv.ToView()
+				if got, want := len(pkt), header.IPv6FixedHeaderSize+header.ICMPv6MinimumSize+hdr.UsedLength(); got != want {
+					t.Fatalf("got an ICMP packet of size = %d, want = %d", got, want)
+				}
+
+				ipHdr := header.IPv6(pkt)
+				checker.IPv6(t, ipHdr, checker.ICMPv6(
+					checker.ICMPv6Type(test.ICMPType),
+					checker.ICMPv6Code(test.ICMPCode)))
+
+				// We know we are looking at no extension headers in the error ICMP
+				// packets.
+				icmpPkt := header.ICMPv6(ipHdr.Payload())
+				// We know we sent small packets that won't be truncated when reflected
+				// back to us.
+				originalPacket := icmpPkt.Payload()
+
+				if diff := cmp.Diff(hdr.View(), buffer.View(originalPacket)); diff != "" {
+					t.Errorf("ICMPv6 payload mismatch (-want +got):\n%s", diff)
+				}
 				return
 			}
 
-			// Expect a UDP packet.
+			// Expect a UDP packet at the top end.
 			if got := stats.Value(); got != 1 {
 				t.Errorf("got UDP Rx Packets = %d, want = 1", got)
 			}
 			gotPayload, _, err := ep.Read(nil)
 			if err != nil {
+				if p, ok := e.Read(); ok {
+					t.Fatalf("unexpected packet returned: %+v", p)
+				}
 				t.Fatalf("Read(nil): %s", err)
 			}
 			if diff := cmp.Diff(buffer.View(udpPayload), gotPayload); diff != "" {

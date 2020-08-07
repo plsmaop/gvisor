@@ -686,6 +686,39 @@ type icmpReason interface {
 	isICMPReason()
 }
 
+// The following 3 error types correspond to the following ICMP Codes
+// of the Paramter Problem ICMP error message as defined in RFC 4443
+// (section 3.4).  The message to report this error includes a pointer field.
+//
+//   Code           0 - Erroneous header field encountered
+//                  1 - Unrecognized Next Header type encountered
+//                  2 - Unrecognized IPv6 option encountered
+//
+//   Pointer        Identifies the octet offset within the
+//                  invoking packet where the error was detected.
+//
+//                  The pointer will point beyond the end of the ICMPv6
+//                  packet if the field in error is beyond what can fit
+//                  in the maximum size of an ICMPv6 error message.
+
+// icmpReasonParamErroneous is an error where the packet has an extension
+// header we can not correctly parse.
+type icmpReasonParamErroneous struct{ pointer uint32 }
+
+func (*icmpReasonParamErroneous) isICMPReason() {}
+
+// icmpReasonParamUnknownNextHeader is an error where the packet has a
+// protocol or next header type field that we don't recognise.
+type icmpReasonParamUnknownNextHeader struct{ pointer uint32 }
+
+func (*icmpReasonParamUnknownNextHeader) isICMPReason() {}
+
+// icmpReasonParamUnknownOption is an error where one of the option headers
+// contains an option we do not recognise.
+type icmpReasonParamUnknownOption struct{ pointer uint32 }
+
+func (*icmpReasonParamUnknownOption) isICMPReason() {}
+
 // icmpReasonPortUnreachable is an error where the transport protocol has no
 // listener and no alternative means to inform the sender.
 type icmpReasonPortUnreachable struct{}
@@ -776,10 +809,31 @@ func returnError(r *stack.Route, reason icmpReason, pkt *stack.PacketBuffer) *tc
 	newPkt.TransportProtocolNumber = header.ICMPv6ProtocolNumber
 
 	icmpHdr := header.ICMPv6(newPkt.TransportHeader().Push(header.ICMPv6DstUnreachableMinimumSize))
-	icmpHdr.SetCode(header.ICMPv6PortUnreachable)
-	icmpHdr.SetType(header.ICMPv6DstUnreachable)
+	var counter *tcpip.StatCounter
+	switch reason := reason.(type) {
+	case *icmpReasonParamErroneous:
+		icmpHdr.SetType(header.ICMPv6ParamProblem)
+		icmpHdr.SetCode(header.ICMPv6ErroneousHeader)
+		icmpHdr.SetTypeSpecific(reason.pointer)
+		counter = sent.ParamProblem
+	case *icmpReasonParamUnknownNextHeader:
+		icmpHdr.SetType(header.ICMPv6ParamProblem)
+		icmpHdr.SetCode(header.ICMPv6UnknownHeader)
+		icmpHdr.SetTypeSpecific(reason.pointer)
+		counter = sent.ParamProblem
+	case *icmpReasonParamUnknownOption:
+		icmpHdr.SetType(header.ICMPv6ParamProblem)
+		icmpHdr.SetCode(header.ICMPv6UnknownOption)
+		icmpHdr.SetTypeSpecific(reason.pointer)
+		counter = sent.ParamProblem
+	case *icmpReasonPortUnreachable:
+		icmpHdr.SetType(header.ICMPv6DstUnreachable)
+		icmpHdr.SetCode(header.ICMPv6PortUnreachable)
+		counter = sent.DstUnreachable
+	default:
+		panic("unsupported ICMP type")
+	}
 	icmpHdr.SetChecksum(header.ICMPv6Checksum(icmpHdr, r.LocalAddress, r.RemoteAddress, newPkt.Data))
-	counter := sent.DstUnreachable
 	err := r.WritePacket(nil /* gso */, stack.NetworkHeaderParams{Protocol: header.ICMPv6ProtocolNumber, TTL: r.DefaultTTL(), TOS: stack.DefaultTOS}, newPkt)
 	if err != nil {
 		sent.Dropped.Increment()

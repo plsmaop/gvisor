@@ -33,6 +33,7 @@ const (
 	checksum           = 10
 	srcAddr            = 12
 	dstAddr            = 16
+	options            = 20
 )
 
 // IPv4Fields contains the fields of an IPv4 packet. It is used to describe the
@@ -211,6 +212,11 @@ func (b IPv4) DestinationAddress() tcpip.Address {
 	return tcpip.Address(b[dstAddr : dstAddr+IPv4AddressSize])
 }
 
+// Options returns a byte array pointing to start of IP Options.
+func (b IPv4) Options() []byte {
+	return b[options:b.HeaderLength()]
+}
+
 // TransportProtocol implements Network.TransportProtocol.
 func (b IPv4) TransportProtocol() tcpip.TransportProtocolNumber {
 	return tcpip.TransportProtocolNumber(b.Protocol())
@@ -234,6 +240,11 @@ func (b IPv4) TOS() (uint8, uint32) {
 // SetTOS sets the "type of service" field of the ipv4 header.
 func (b IPv4) SetTOS(v uint8, _ uint32) {
 	b[tos] = v
+}
+
+// SetTTL sets the "Time to Live" field of the ipv4 header.
+func (b IPv4) SetTTL(v byte) {
+	b[ttl] = v
 }
 
 // SetTotalLength sets the "total length" field of the ipv4 header.
@@ -267,6 +278,12 @@ func (b IPv4) SetSourceAddress(addr tcpip.Address) {
 // header.
 func (b IPv4) SetDestinationAddress(addr tcpip.Address) {
 	copy(b[dstAddr:dstAddr+IPv4AddressSize], addr)
+}
+
+// SetOptions copies a byte array into the options zone of an IPv4 packet.
+// HeaderLength MUST be already set.
+func (b IPv4) SetOptions(in []byte) {
+	copy(b[options:b.HeaderLength()], in)
 }
 
 // CalculateChecksum calculates the checksum of the ipv4 header.

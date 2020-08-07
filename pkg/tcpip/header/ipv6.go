@@ -34,6 +34,9 @@ const (
 	hopLimit             = 7
 	v6SrcAddr            = 8
 	v6DstAddr            = v6SrcAddr + IPv6AddressSize
+
+	// IPv6FixedHeaderSize is where extension headers would start.
+	IPv6FixedHeaderSize = v6DstAddr + IPv6AddressSize
 )
 
 // IPv6Fields contains the fields of an IPv6 packet. It is used to describe the
@@ -68,8 +71,9 @@ type IPv6Fields struct {
 type IPv6 []byte
 
 const (
-	// IPv6MinimumSize is the minimum size of a valid IPv6 packet.
-	IPv6MinimumSize = 40
+	// IPv6MinimumSize is the minimum size of a valid IPv6 packet
+	// with just a fixed header.
+	IPv6MinimumSize = IPv6FixedHeaderSize
 
 	// IPv6AddressSize is the size, in bytes, of an IPv6 address.
 	IPv6AddressSize = 16

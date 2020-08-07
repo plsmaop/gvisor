@@ -1998,3 +1998,16 @@ type ICMPReason interface {
 type ICMPReasonPortUnreachable struct{}
 
 func (*ICMPReasonPortUnreachable) isICMP() {}
+
+// ICMPReasonProtoUnreachable is an error where the packet has a protocol field
+// that we don't recognise.
+type ICMPReasonProtoUnreachable struct {
+	// Pointer gives the offset of the protocol field. In IPv4 this
+	// is ignored as RFC 792 does not have a pointer field in the Unknown
+	// Protocol message (page 3 code 2) but for IPv6, RFC 4443
+	// (section 3.4, code 1) uses the parameter problem message to
+	// report this error which includes a pointer field.
+	Pointer uint32
+}
+
+func (*ICMPReasonProtoUnreachable) isICMP() {}

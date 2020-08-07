@@ -94,7 +94,7 @@ func (e *endpoint) NICID() tcpip.NICID {
 // MaxHeaderLength returns the maximum length needed by ipv4 headers (and
 // underlying protocols).
 func (e *endpoint) MaxHeaderLength() uint16 {
-	return e.linkEP.MaxHeaderLength() + header.IPv4MinimumSize
+	return e.linkEP.MaxHeaderLength() + header.IPv4MaximumHeaderSize
 }
 
 // GSOMaxSize returns the maximum GSO packet size.

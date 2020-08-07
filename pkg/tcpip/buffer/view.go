@@ -229,6 +229,16 @@ func (vv *VectorisedView) ToView() View {
 	return u
 }
 
+// ToOwnedView returns a single view containing the content of the vectorised
+// view that vv does not own.
+func (vv *VectorisedView) ToOwnedView() View {
+	u := make([]byte, 0, vv.size)
+	for _, v := range vv.views {
+		u = append(u, v...)
+	}
+	return u
+}
+
 // Views returns the slice containing the all views.
 func (vv *VectorisedView) Views() []View {
 	return vv.views

@@ -1801,16 +1801,26 @@ func TestV4UnknownDestination(t *testing.T) {
 				checker.ICMPv4Type(header.ICMPv4DstUnreachable),
 				checker.ICMPv4Code(header.ICMPv4PortUnreachable)))
 
+			// We need to compare the included data part of the udp packet that is in
+			// the ICMP packet with the matching original data.
 			icmpPkt := header.ICMPv4(hdr.Payload())
 			payloadIPHeader := header.IPv4(icmpPkt.Payload())
+			incomingHeaderLength := header.IPv4MinimumSize + header.UDPMinimumSize
 			wantLen := len(payload)
 			if tc.largePayload {
-				wantLen = header.IPv4MinimumProcessableDatagramSize - header.IPv4MinimumSize*2 - header.ICMPv4MinimumSize - header.UDPMinimumSize
+				// To work out the data size we need to simulate what the sender would
+				// have done. The wanted size is the total available minus the sum of
+				// the headers in the udp AND icmp packets, given that we know the test
+				// had only a minimal IP header but the ICMP sender will have allowed
+				// for a maximally sized packet header.
+				wantLen = header.IPv4MinimumProcessableDatagramSize - header.IPv4MaximumHeaderSize - header.ICMPv4MinimumSize - incomingHeaderLength
+
 			}
 
-			// In case of large payloads the IP packet may be truncated. Update
+			// In the case of large payloads the IP packet may be truncated. Update
 			// the length field before retrieving the udp datagram payload.
-			payloadIPHeader.SetTotalLength(uint16(wantLen + header.UDPMinimumSize + header.IPv4MinimumSize))
+			// Add back the two headers within the payload
+			payloadIPHeader.SetTotalLength(uint16(wantLen + incomingHeaderLength))
 
 			origDgram := header.UDP(payloadIPHeader.Payload())
 			if got, want := len(origDgram.Payload()), wantLen; got != want {

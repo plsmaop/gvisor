@@ -205,7 +205,8 @@ func TestPingMulticastBroadcast(t *testing.T) {
 				t.Errorf("got pkt.Route.RemoteAddress = %s, want = %s", pkt.Route.RemoteAddress, expectedDst)
 			}
 
-			src, dst := proto.ParseAddresses(pkt.Pkt.NetworkHeader().View())
+			dataVV := buffer.NewVectorisedView(pkt.Pkt.Size(), pkt.Pkt.Views())
+			src, dst := proto.ParseAddresses(dataVV.ToView())
 			if src != expectedSrc {
 				t.Errorf("got pkt source = %s, want = %s", src, expectedSrc)
 			}

@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"math"
+	"net"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -29,6 +30,7 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
 	"gvisor.dev/gvisor/pkg/tcpip/network/testutil"
 	"gvisor.dev/gvisor/pkg/tcpip/stack"
+	"gvisor.dev/gvisor/pkg/tcpip/transport/icmp"
 	"gvisor.dev/gvisor/pkg/tcpip/transport/tcp"
 	"gvisor.dev/gvisor/pkg/tcpip/transport/udp"
 	"gvisor.dev/gvisor/pkg/waiter"
@@ -90,6 +92,156 @@ func TestExcludeBroadcast(t *testing.T) {
 			t.Errorf("Connect failed: %v", err)
 		}
 	})
+}
+
+// TestPingOptions tests that responding to an Echo Request
+// with IP options returns the same options.
+func TestPingOptions(t *testing.T) {
+	const (
+		defaultMTU            = 1280
+		ttl                   = 255
+		nicID                 = 1
+		randomSequence uint16 = 123
+		randomIdent    uint16 = 42
+	)
+	var (
+		ipv4Addr = tcpip.AddressWithPrefix{
+			Address:   tcpip.Address(net.ParseIP("192.168.1.58").To4()),
+			PrefixLen: 24,
+		}
+
+		// Remote addrs.
+		remoteIPv4Addr = tcpip.Address(net.ParseIP("10.0.0.1").To4())
+	)
+
+	tests := []struct {
+		name    string
+		options []byte
+	}{
+		{
+			name:    "No options",
+			options: []byte{},
+		},
+		{
+			name:    "End options",
+			options: []byte{0, 0, 0, 0},
+		},
+		{
+			name:    "NOP options",
+			options: []byte{1, 1, 1, 1},
+		},
+		{
+			name:    "NOP and End options",
+			options: []byte{1, 1, 0, 0},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ipv4Proto := ipv4.NewProtocol()
+			s := stack.New(stack.Options{
+				NetworkProtocols:   []stack.NetworkProtocol{ipv4Proto},
+				TransportProtocols: []stack.TransportProtocol{icmp.NewProtocol4(), icmp.NewProtocol6()},
+			})
+			// We only expect a single packet in response to our ICMP Echo Request.
+			e := channel.New(1, defaultMTU, "")
+			if err := s.CreateNIC(nicID, e); err != nil {
+				t.Fatalf("CreateNIC(%d, _): %s", nicID, err)
+			}
+			ipv4ProtoAddr := tcpip.ProtocolAddress{Protocol: header.IPv4ProtocolNumber, AddressWithPrefix: ipv4Addr}
+			if err := s.AddProtocolAddress(nicID, ipv4ProtoAddr); err != nil {
+				t.Fatalf("AddProtocolAddress(%d, %+v): %s", nicID, ipv4ProtoAddr, err)
+			}
+
+			// Default routes for IPv4 and IPv6 so ICMP can find a route to the remote
+			// node when attempting to send the ICMP Echo Reply.
+			s.SetRouteTable([]tcpip.Route{
+				tcpip.Route{
+					Destination: header.IPv4EmptySubnet,
+					NIC:         nicID,
+				},
+			})
+
+			ipHeaderLength := header.IPv4MinimumSize + len(test.options)
+			totalLen := ipHeaderLength + header.ICMPv4MinimumSize
+			hdr := buffer.NewPrependable(totalLen)
+			icmp := header.ICMPv4(hdr.Prepend(header.ICMPv4MinimumSize))
+
+			// throw in some non zero values for seqence and Ident
+			icmp.SetIdent(randomIdent)
+			icmp.SetSequence(randomSequence)
+			icmp.SetType(header.ICMPv4Echo)
+			icmp.SetCode(header.ICMPv4UnusedCode)
+			icmp.SetChecksum(0)
+			icmp.SetChecksum(^header.Checksum(icmp, 0))
+			ip := header.IPv4(hdr.Prepend(ipHeaderLength))
+			ip.Encode(&header.IPv4Fields{
+				IHL:         uint8(ipHeaderLength),
+				TotalLength: uint16(totalLen),
+				Protocol:    uint8(header.ICMPv4ProtocolNumber),
+				TTL:         ttl,
+				SrcAddr:     remoteIPv4Addr,
+				DstAddr:     ipv4Addr.Address,
+			})
+			ip.SetOptions(test.options)
+			requestPkt := stack.NewPacketBuffer(stack.PacketBufferOptions{
+				Data: hdr.View().ToVectorisedView(),
+			})
+			e.InjectInbound(header.IPv4ProtocolNumber, requestPkt)
+			reply, ok := e.Read()
+			if !ok {
+				t.Fatal("expected ICMP response")
+			}
+			if got, want := reply.Pkt.Size(), requestPkt.Size(); got != want {
+				t.Errorf("got Reply packet of size %d, want = %d", got, want)
+			}
+			// Check IP header fields
+			if got, want := reply.Route.LocalAddress, ipv4Addr.Address; got != want {
+				t.Errorf("got pkt.Route.LocalAddress = %s, want = %s", got, want)
+			}
+			if got, want := reply.Route.RemoteAddress, remoteIPv4Addr; got != want {
+				t.Errorf("got pkt.Route.RemoteAddress = %s, want = %s", got, want)
+			}
+
+			dataVV := buffer.NewVectorisedView(reply.Pkt.Size(), reply.Pkt.Views())
+			replyIPPacket := dataVV.ToView()
+			src, dst := ipv4Proto.ParseAddresses(replyIPPacket)
+			if src != ipv4Addr.Address {
+				t.Errorf("got pkt source = %s, want = %s", src, ipv4Addr.Address)
+			}
+			if dst != remoteIPv4Addr {
+				t.Errorf("got pkt destination = %s, want = %s", dst, remoteIPv4Addr)
+			}
+			replyIPHeader := header.IPv4(replyIPPacket)
+			options := replyIPHeader.Options()
+			if got, want := int(replyIPHeader.HeaderLength()), int(ipHeaderLength); got != want {
+				t.Errorf("got IPv4 header length = %d, want = %d", got, want)
+			}
+			if !bytes.Equal(options, test.options) {
+				t.Errorf("Options changed\ngot:\n%s\nwant:\n%s", hex.Dump(options), hex.Dump(test.options))
+			}
+			// Check ICMP header fields
+			replyICMPHeader := header.ICMPv4(replyIPHeader.Payload())
+			if got, want := replyICMPHeader.Type(), header.ICMPv4EchoReply; got != want {
+				t.Errorf("got Reply type of %d, want = %d", got, want)
+			}
+			if got, want := replyICMPHeader.Code(), header.ICMPv4UnusedCode; got != want {
+				t.Errorf("got Reply code of %d, want = %d", got, want)
+			}
+			if got, want := replyICMPHeader.Ident(), randomIdent; got != want {
+				t.Errorf("got Reply ident of %d, want = %d", got, want)
+			}
+			if got, want := replyICMPHeader.Sequence(), randomSequence; got != want {
+				t.Errorf("got Reply sequence number of %d, want = %d", got, want)
+			}
+			replyChecksum := replyICMPHeader.Checksum()
+			replyICMPHeader.SetChecksum(0)
+			replyICMPChecksum := ^header.Checksum(replyICMPHeader, 0)
+			if got, want := replyChecksum, replyICMPChecksum; got != want {
+				t.Errorf("got icmp checksum of %d, want = %d", got, want)
+			}
+		})
+	}
 }
 
 // comparePayloads compared the contents of all the packets against the contents
