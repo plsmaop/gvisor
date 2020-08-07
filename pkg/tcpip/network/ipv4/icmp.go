@@ -205,6 +205,8 @@ func (p *protocol) ReturnError(r *stack.Route, reason tcpip.ICMPReason, pkt *sta
 	switch reason.(type) {
 	case *tcpip.ICMPReasonPortUnreachable:
 		return returnError(r, &icmpReasonPortUnreachable{}, pkt)
+	case *tcpip.ICMPReasonProtoUnreachable:
+		return returnError(r, &icmpReasonProtoUnreachable{}, pkt)
 	default:
 		return tcpip.ErrNotSupported
 	}
@@ -220,6 +222,12 @@ type icmpReason interface {
 type icmpReasonPortUnreachable struct{}
 
 func (*icmpReasonPortUnreachable) isICMPReason() {}
+
+// icmpReasonProtoUnreachable is an error where the transport protocol is
+// not supported.
+type icmpReasonProtoUnreachable struct{}
+
+func (*icmpReasonProtoUnreachable) isICMPReason() {}
 
 // returnError takes an error descriptor and generates the appropriate ICMP
 // error packet for IPv4 and sends it back to the remote device that sent
@@ -346,12 +354,23 @@ func returnError(r *stack.Route, reason icmpReason, pkt *stack.PacketBuffer) *tc
 		ReserveHeaderBytes: headerLen,
 		Data:               payload,
 	})
+
 	icmpPkt.TransportProtocolNumber = header.ICMPv4ProtocolNumber
 
 	icmpHdr := header.ICMPv4(icmpPkt.TransportHeader().Push(header.ICMPv4MinimumSize))
-	icmpHdr.SetType(header.ICMPv4DstUnreachable)
-	icmpHdr.SetCode(header.ICMPv4PortUnreachable)
-	counter := sent.DstUnreachable
+	var counter *tcpip.StatCounter
+	switch reason.(type) {
+	case *icmpReasonPortUnreachable:
+		icmpHdr.SetType(header.ICMPv4DstUnreachable)
+		icmpHdr.SetCode(header.ICMPv4PortUnreachable)
+		counter = sent.DstUnreachable
+	case *icmpReasonProtoUnreachable:
+		icmpHdr.SetType(header.ICMPv4DstUnreachable)
+		icmpHdr.SetCode(header.ICMPv4ProtoUnreachable)
+		counter = sent.DstUnreachable
+	default:
+		panic("unsupported ICMP type")
+	}
 	icmpHdr.SetChecksum(header.ICMPv4Checksum(icmpHdr, icmpPkt.Data))
 
 	if err := r.WritePacket(

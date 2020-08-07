@@ -1402,6 +1402,19 @@ func (n *NIC) DeliverTransportPacket(r *Route, protocol tcpip.TransportProtocolN
 	state, ok := n.stack.transportProtocols[protocol]
 	if !ok {
 		n.stack.stats.UnknownProtocolRcvdPackets.Increment()
+		np, ok := n.stack.networkProtocols[r.NetProto]
+		if !ok {
+			panic(fmt.Sprintf("expected stack to have a NetworkProtocol for proto = %d", r.NetProto))
+		}
+
+		if r.NetProto == header.IPv4ProtocolNumber {
+			// IPv6 handles this situation internally so we are left with IPv4.
+			// As per RFC: 1122 Section 3.2.2.1
+			//   A host SHOULD generate Destination Unreachable messages with code:
+			//     2 (Protocol Unreachable), when the designated transport protocol
+			//     is not supported
+			_ = np.ReturnError(r, &tcpip.ICMPReasonProtoUnreachable{}, pkt)
+		}
 		return
 	}
 
