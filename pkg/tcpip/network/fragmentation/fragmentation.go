@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package fragmentation contains the implementation of IP fragmentation.
-// It is based on RFC 791 and RFC 815.
+// It is based on RFC 791, RFC 815 and RFC 8200.
 package fragmentation
 
 import (
@@ -25,6 +25,7 @@ import (
 	"gvisor.dev/gvisor/pkg/sync"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/buffer"
+	"gvisor.dev/gvisor/pkg/tcpip/stack"
 )
 
 const (
@@ -210,4 +211,80 @@ func (f *Fragmentation) release(r *reassembler) {
 		log.Printf("memory counter < 0 (%d), this is an accounting bug that requires investigation", f.size)
 		f.size = 0
 	}
+}
+
+// PacketFragmenter is the book-keeping struct for packet fragmentation.
+type PacketFragmenter struct {
+	transportHeader buffer.View
+	data            buffer.VectorisedView
+	reserve         int
+	innerMTU        int
+	fragmentCount   uint32
+	currentFragment uint32
+	fragmentOffset  uint16
+}
+
+// MakePacketFragmenter prepares the struct needed for packet fragmentation.
+//
+// pkt is the packet to be fragmented.
+//
+// innerMTU is the maximum number of bytes of fragmentable data a fragment can
+// have.
+//
+// reserve is the number of bytes that should be reserved for the headers in
+// each generated fragment.
+func MakePacketFragmenter(pkt *stack.PacketBuffer, innerMTU int, reserve int) PacketFragmenter {
+	// As per RFC 8200 Section 4.5, some IPv6 extension headers should not be
+	// repeated in each fragment. However we do not currently support any header
+	// of that kind yet, so the following computation is valid for both IPv4 and
+	// IPv6.
+	// TODO(gvisor.dev/issue/3912): Once Authentication or ESP Headers are
+	// supported for outbound packets, the fragmentable data should not include
+	// these headers.
+	var fragmentableData buffer.VectorisedView
+	fragmentableData.AppendView(pkt.TransportHeader().View())
+	fragmentableData.Append(pkt.Data)
+	fragmentCount := uint32((fragmentableData.Size() + innerMTU - 1) / innerMTU)
+
+	return PacketFragmenter{
+		data:          fragmentableData,
+		reserve:       reserve,
+		innerMTU:      innerMTU,
+		fragmentCount: fragmentCount,
+	}
+}
+
+// BuildNextFragment returns a packet with the payload of the next fragment,
+// along with the fragment's offset, the number of bytes copied and a boolean
+// indicating if there are more fragments left or not. If this function is
+// called again after it indicated that no more fragments were left, it will
+// panic.
+//
+// Note that the returned packet will not have its network & link headers
+// populated, but the space for them will be reserved. The first fragment may
+// have its transport header populated.
+func (pf *PacketFragmenter) BuildNextFragment(proto tcpip.NetworkProtocolNumber) (*stack.PacketBuffer, uint16, uint16, bool) {
+	if pf.currentFragment >= pf.fragmentCount {
+		panic("BuildNextFragment should not be called again after the last fragment was built")
+	}
+
+	fragPkt := stack.NewPacketBuffer(stack.PacketBufferOptions{
+		ReserveHeaderBytes: pf.reserve,
+	})
+	fragPkt.NetworkProtocolNumber = proto
+
+	// Copy data for the fragment.
+	n := pf.data.Size()
+	if n > pf.innerMTU {
+		n = pf.innerMTU
+	}
+	pf.data.ReadToVV(&fragPkt.Data, n)
+
+	offset := pf.fragmentOffset
+	copied := uint16(n)
+	pf.fragmentOffset += copied
+	pf.currentFragment++
+	more := pf.currentFragment != pf.fragmentCount
+
+	return fragPkt, offset, copied, more
 }

@@ -123,16 +123,6 @@ func compareFragments(t *testing.T, packets []*stack.PacketBuffer, sourcePacketI
 		if got, want := len(ip), int(mtu); got > want {
 			t.Errorf("fragment is too large, got %d want %d", got, want)
 		}
-		if i == 0 {
-			got := packet.NetworkHeader().View().Size() + packet.TransportHeader().View().Size()
-			// sourcePacketInfo does not have NetworkHeader added, simulate one.
-			want := header.IPv4MinimumSize + sourcePacketInfo.TransportHeader().View().Size()
-			// Check that it kept the transport header in packet.TransportHeader if
-			// it fits in the first fragment.
-			if want < int(mtu) && got != want {
-				t.Errorf("first fragment hdr parts should have unmodified length if possible: got %d, want %d", got, want)
-			}
-		}
 		if got, want := packet.AvailableHeaderBytes(), sourcePacketInfo.AvailableHeaderBytes()-header.IPv4MinimumSize; got != want {
 			t.Errorf("fragment #%d should have the same available space for prepending as source: got %d, want %d", i, got, want)
 		}
@@ -162,6 +152,7 @@ func compareFragments(t *testing.T, packets []*stack.PacketBuffer, sourcePacketI
 }
 
 func TestFragmentation(t *testing.T) {
+	const ttl = 42
 	var manyPayloadViewsSizes [1000]int
 	for i := range manyPayloadViewsSizes {
 		manyPayloadViewsSizes[i] = 7
@@ -194,11 +185,11 @@ func TestFragmentation(t *testing.T) {
 			source := pkt.Clone()
 			err := r.WritePacket(ft.gso, stack.NetworkHeaderParams{
 				Protocol: tcp.ProtocolNumber,
-				TTL:      42,
+				TTL:      ttl,
 				TOS:      stack.DefaultTOS,
 			}, pkt)
 			if err != nil {
-				t.Errorf("got err = %s, want = nil", err)
+				t.Errorf("got err = %s", err)
 			}
 
 			if got := len(ep.WrittenPackets); got != ft.expectedFrags {
@@ -215,6 +206,7 @@ func TestFragmentation(t *testing.T) {
 // TestFragmentationErrors checks that errors are returned from write packet
 // correctly.
 func TestFragmentationErrors(t *testing.T) {
+	const ttl = 42
 	fragTests := []struct {
 		description           string
 		mtu                   uint32
@@ -236,7 +228,7 @@ func TestFragmentationErrors(t *testing.T) {
 			pkt := testutil.MakeRandPkt(ft.transportHeaderLength, header.IPv4MinimumSize, ft.payloadViewsSizes, header.IPv4ProtocolNumber)
 			err := r.WritePacket(&stack.GSO{}, stack.NetworkHeaderParams{
 				Protocol: tcp.ProtocolNumber,
-				TTL:      42,
+				TTL:      ttl,
 				TOS:      stack.DefaultTOS,
 			}, pkt)
 			if err != ft.err {
@@ -1164,7 +1156,7 @@ func buildRoute(t *testing.T, ep stack.LinkEndpoint) stack.Route {
 	}
 	rt, err := s.FindRoute(1, src, dst, ipv4.ProtocolNumber, false /* multicastLoop */)
 	if err != nil {
-		t.Fatalf("got FindRoute(1, _, _, %d, false) = %s, want = nil", ipv4.ProtocolNumber, err)
+		t.Fatalf("got FindRoute(1, _, _, %d, false) = %s", ipv4.ProtocolNumber, err)
 	}
 	return rt
 }

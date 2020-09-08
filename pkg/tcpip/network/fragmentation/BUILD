@@ -29,6 +29,8 @@ go_library(
         "//pkg/sync",
         "//pkg/tcpip",
         "//pkg/tcpip/buffer",
+        "//pkg/tcpip/header",
+        "//pkg/tcpip/stack",
     ],
 )
 
@@ -43,5 +45,7 @@ go_test(
     library = ":fragmentation",
     deps = [
         "//pkg/tcpip/buffer",
+        "//pkg/tcpip/network/testutil",
+        "@com_github_google_go_cmp//cmp:go_default_library",
     ],
 )
