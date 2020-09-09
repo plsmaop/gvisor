@@ -21,6 +21,8 @@ import (
 
 // GetDentryOptions contains options to VirtualFilesystem.GetDentryAt() and
 // FilesystemImpl.GetDentryAt().
+//
+// +stateify savable
 type GetDentryOptions struct {
 	// If CheckSearchable is true, FilesystemImpl.GetDentryAt() must check that
 	// the returned Dentry is a directory for which creds has search
@@ -30,6 +32,8 @@ type GetDentryOptions struct {
 
 // MkdirOptions contains options to VirtualFilesystem.MkdirAt() and
 // FilesystemImpl.MkdirAt().
+//
+// +stateify savable
 type MkdirOptions struct {
 	// Mode is the file mode bits for the created directory.
 	Mode linux.FileMode
@@ -56,6 +60,8 @@ type MkdirOptions struct {
 
 // MknodOptions contains options to VirtualFilesystem.MknodAt() and
 // FilesystemImpl.MknodAt().
+//
+// +stateify savable
 type MknodOptions struct {
 	// Mode is the file type and mode bits for the created file.
 	Mode linux.FileMode
@@ -72,6 +78,8 @@ type MknodOptions struct {
 
 // MountFlags contains flags as specified for mount(2), e.g. MS_NOEXEC.
 // MS_RDONLY is not part of MountFlags because it's tracked in Mount.writers.
+//
+// +stateify savable
 type MountFlags struct {
 	// NoExec is equivalent to MS_NOEXEC.
 	NoExec bool
@@ -93,6 +101,8 @@ type MountFlags struct {
 }
 
 // MountOptions contains options to VirtualFilesystem.MountAt().
+//
+// +stateify savable
 type MountOptions struct {
 	// Flags contains flags as specified for mount(2), e.g. MS_NOEXEC.
 	Flags MountFlags
@@ -110,6 +120,8 @@ type MountOptions struct {
 
 // OpenOptions contains options to VirtualFilesystem.OpenAt() and
 // FilesystemImpl.OpenAt().
+//
+// +stateify savable
 type OpenOptions struct {
 	// Flags contains access mode and flags as specified for open(2).
 	//
@@ -135,6 +147,8 @@ type OpenOptions struct {
 // ReadOptions contains options to FileDescription.PRead(),
 // FileDescriptionImpl.PRead(), FileDescription.Read(), and
 // FileDescriptionImpl.Read().
+//
+// +stateify savable
 type ReadOptions struct {
 	// Flags contains flags as specified for preadv2(2).
 	Flags uint32
@@ -142,6 +156,8 @@ type ReadOptions struct {
 
 // RenameOptions contains options to VirtualFilesystem.RenameAt() and
 // FilesystemImpl.RenameAt().
+//
+// +stateify savable
 type RenameOptions struct {
 	// Flags contains flags as specified for renameat2(2).
 	Flags uint32
@@ -153,6 +169,8 @@ type RenameOptions struct {
 // SetStatOptions contains options to VirtualFilesystem.SetStatAt(),
 // FilesystemImpl.SetStatAt(), FileDescription.SetStat(), and
 // FileDescriptionImpl.SetStat().
+//
+// +stateify savable
 type SetStatOptions struct {
 	// Stat is the metadata that should be set. Only fields indicated by
 	// Stat.Mask should be set.
@@ -174,6 +192,8 @@ type SetStatOptions struct {
 
 // BoundEndpointOptions contains options to VirtualFilesystem.BoundEndpointAt()
 // and FilesystemImpl.BoundEndpointAt().
+//
+// +stateify savable
 type BoundEndpointOptions struct {
 	// Addr is the path of the file whose socket endpoint is being retrieved.
 	// It is generally irrelevant: most endpoints are stored at a dentry that
@@ -193,6 +213,8 @@ type BoundEndpointOptions struct {
 // GetXattrOptions contains options to VirtualFilesystem.GetXattrAt(),
 // FilesystemImpl.GetXattrAt(), FileDescription.GetXattr(), and
 // FileDescriptionImpl.GetXattr().
+//
+// +stateify savable
 type GetXattrOptions struct {
 	// Name is the name of the extended attribute to retrieve.
 	Name string
@@ -207,6 +229,8 @@ type GetXattrOptions struct {
 // SetXattrOptions contains options to VirtualFilesystem.SetXattrAt(),
 // FilesystemImpl.SetXattrAt(), FileDescription.SetXattr(), and
 // FileDescriptionImpl.SetXattr().
+//
+// +stateify savable
 type SetXattrOptions struct {
 	// Name is the name of the extended attribute being mutated.
 	Name string
@@ -221,6 +245,8 @@ type SetXattrOptions struct {
 // StatOptions contains options to VirtualFilesystem.StatAt(),
 // FilesystemImpl.StatAt(), FileDescription.Stat(), and
 // FileDescriptionImpl.Stat().
+//
+// +stateify savable
 type StatOptions struct {
 	// Mask is the set of fields in the returned Statx that the FilesystemImpl
 	// or FileDescriptionImpl should provide. Bits are as in linux.Statx.Mask.
@@ -238,6 +264,8 @@ type StatOptions struct {
 }
 
 // UmountOptions contains options to VirtualFilesystem.UmountAt().
+//
+// +stateify savable
 type UmountOptions struct {
 	// Flags contains flags as specified for umount2(2).
 	Flags uint32
@@ -246,6 +274,8 @@ type UmountOptions struct {
 // WriteOptions contains options to FileDescription.PWrite(),
 // FileDescriptionImpl.PWrite(), FileDescription.Write(), and
 // FileDescriptionImpl.Write().
+//
+// +stateify savable
 type WriteOptions struct {
 	// Flags contains flags as specified for pwritev2(2).
 	Flags uint32

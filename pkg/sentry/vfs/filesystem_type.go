@@ -55,6 +55,8 @@ type registeredFilesystemType struct {
 
 // RegisterFilesystemTypeOptions contains options to
 // VirtualFilesystem.RegisterFilesystem().
+//
+// +stateify savable
 type RegisterFilesystemTypeOptions struct {
 	// If AllowUserMount is true, allow calls to VirtualFilesystem.MountAt()
 	// for which MountOptions.InternalMount == false to use this filesystem
