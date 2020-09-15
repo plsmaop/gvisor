@@ -562,13 +562,7 @@ func (i *inode) newEntry(ctx context.Context, name string, fileType linux.FileMo
 	if opcode != linux.FUSE_LOOKUP && ((out.Attr.Mode&linux.S_IFMT)^uint32(fileType) != 0 || out.NodeID == 0 || out.NodeID == linux.FUSE_ROOT_ID) {
 		return nil, syserror.EIO
 	}
-	child := i.fs.newInode(out.NodeID, out.Attr)
-	if opcode == linux.FUSE_LOOKUP {
-		i.dentry.InsertChildLocked(name, child)
-	} else {
-		i.dentry.InsertChild(name, child)
-	}
-	return child, nil
+	return i.fs.newInode(out.NodeID, out.Attr), nil
 }
 
 // Getlink implements kernfs.Inode.Getlink.
