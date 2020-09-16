@@ -567,7 +567,7 @@ func hashRoute(r *stack.Route, protocol tcpip.TransportProtocolNumber, hashIV ui
 }
 
 // NewProtocol returns an IPv4 network protocol.
-func NewProtocol() stack.NetworkProtocol {
+func NewProtocol(clock tcpip.Clock) stack.NetworkProtocol {
 	ids := make([]uint32, buckets)
 
 	// Randomly initialize hashIV and the ids.
@@ -581,6 +581,6 @@ func NewProtocol() stack.NetworkProtocol {
 		ids:           ids,
 		hashIV:        hashIV,
 		defaultTTL:    DefaultTTL,
-		fragmentation: fragmentation.NewFragmentation(fragmentblockSize, fragmentation.HighFragThreshold, fragmentation.LowFragThreshold, fragmentation.DefaultReassembleTimeout),
+		fragmentation: fragmentation.NewFragmentation(fragmentblockSize, fragmentation.HighFragThreshold, fragmentation.LowFragThreshold, fragmentation.DefaultReassembleTimeout, clock),
 	}
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/buffer"
+	"gvisor.dev/gvisor/pkg/tcpip/faketime"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/link/channel"
 	"gvisor.dev/gvisor/pkg/tcpip/link/sniffer"
@@ -176,7 +177,7 @@ func newTestContext(t *testing.T, useNeighborCache bool) *testContext {
 	}
 
 	s := stack.New(stack.Options{
-		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(), arp.NewProtocol()},
+		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(faketime.NewNullClock()), arp.NewProtocol()},
 		TransportProtocols: []stack.TransportProtocol{icmp.NewProtocol4()},
 		NUDConfigs:         c,
 		NUDDisp:            &d,

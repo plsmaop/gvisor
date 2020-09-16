@@ -25,6 +25,7 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/buffer"
 	"gvisor.dev/gvisor/pkg/tcpip/checker"
+	"gvisor.dev/gvisor/pkg/tcpip/faketime"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/link/channel"
 	"gvisor.dev/gvisor/pkg/tcpip/link/loopback"
@@ -293,8 +294,9 @@ type testContext struct {
 
 func newDualTestContext(t *testing.T, mtu uint32) *testContext {
 	t.Helper()
+	clock := faketime.NewNullClock()
 	return newDualTestContextWithOptions(t, mtu, stack.Options{
-		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(), ipv6.NewProtocol()},
+		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(clock), ipv6.NewProtocol(clock)},
 		TransportProtocols: []stack.TransportProtocol{udp.NewProtocol()},
 	})
 }
@@ -528,7 +530,7 @@ func newMinPayload(minSize int) []byte {
 
 func TestBindToDeviceOption(t *testing.T) {
 	s := stack.New(stack.Options{
-		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol()},
+		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(faketime.NewNullClock())},
 		TransportProtocols: []stack.TransportProtocol{udp.NewProtocol()}})
 
 	ep, err := s.NewEndpoint(udp.ProtocolNumber, ipv4.ProtocolNumber, &waiter.Queue{})
@@ -802,8 +804,9 @@ func TestV4ReadSelfSource(t *testing.T) {
 		{"NoHandleLocal", true, tcpip.ErrWouldBlock, 1},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
+			clock := faketime.NewNullClock()
 			c := newDualTestContextWithOptions(t, defaultMTU, stack.Options{
-				NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(), ipv6.NewProtocol()},
+				NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(clock), ipv6.NewProtocol(clock)},
 				TransportProtocols: []stack.TransportProtocol{udp.NewProtocol()},
 				HandleLocal:        tt.handleLocal,
 			})
@@ -1479,14 +1482,15 @@ func TestTTL(t *testing.T) {
 			if flow.isMulticast() {
 				wantTTL = multicastTTL
 			} else {
+				clock := faketime.NewNullClock()
 				var p stack.NetworkProtocol
 				if flow.isV4() {
-					p = ipv4.NewProtocol()
+					p = ipv4.NewProtocol(clock)
 				} else {
-					p = ipv6.NewProtocol()
+					p = ipv6.NewProtocol(clock)
 				}
 				ep := p.NewEndpoint(0, nil, nil, nil, nil, stack.New(stack.Options{
-					NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(), ipv6.NewProtocol()},
+					NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(clock), ipv6.NewProtocol(clock)},
 					TransportProtocols: []stack.TransportProtocol{udp.NewProtocol()},
 				}))
 				wantTTL = ep.DefaultTTL()
@@ -1512,14 +1516,15 @@ func TestSetTTL(t *testing.T) {
 						c.t.Fatalf("SetSockOptInt(TTLOption, %d) failed: %s", wantTTL, err)
 					}
 
+					clock := faketime.NewNullClock()
 					var p stack.NetworkProtocol
 					if flow.isV4() {
-						p = ipv4.NewProtocol()
+						p = ipv4.NewProtocol(clock)
 					} else {
-						p = ipv6.NewProtocol()
+						p = ipv6.NewProtocol(clock)
 					}
 					ep := p.NewEndpoint(0, nil, nil, nil, nil, stack.New(stack.Options{
-						NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(), ipv6.NewProtocol()},
+						NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(clock), ipv6.NewProtocol(clock)},
 						TransportProtocols: []stack.TransportProtocol{udp.NewProtocol()},
 					}))
 					ep.Close()
@@ -2352,9 +2357,9 @@ func TestOutgoingSubnetBroadcast(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			clock := faketime.NewNullClock()
 			s := stack.New(stack.Options{
-				NetworkProtocols: []stack.NetworkProtocol{ipv4.NewProtocol(), ipv6.NewProtocol()},
-
+				NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(clock), ipv6.NewProtocol(clock)},
 				TransportProtocols: []stack.TransportProtocol{udp.NewProtocol()},
 			})
 			e := channel.New(0, defaultMTU, "")

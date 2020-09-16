@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"gvisor.dev/gvisor/pkg/tcpip"
+	"gvisor.dev/gvisor/pkg/tcpip/faketime"
 	"gvisor.dev/gvisor/pkg/tcpip/link/channel"
 	"gvisor.dev/gvisor/pkg/tcpip/network/ipv6"
 	"gvisor.dev/gvisor/pkg/tcpip/stack"
@@ -60,7 +61,7 @@ func TestSetNUDConfigurationFailsForBadNICID(t *testing.T) {
 		// A neighbor cache is required to store NUDConfigurations. The networking
 		// stack will only allocate neighbor caches if a protocol providing link
 		// address resolution is specified (e.g. ARP or IPv6).
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		UseNeighborCache: true,
 	})
 
@@ -137,7 +138,7 @@ func TestDefaultNUDConfigurations(t *testing.T) {
 		// A neighbor cache is required to store NUDConfigurations. The networking
 		// stack will only allocate neighbor caches if a protocol providing link
 		// address resolution is specified (e.g. ARP or IPv6).
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NUDConfigs:       stack.DefaultNUDConfigurations(),
 		UseNeighborCache: true,
 	})
@@ -192,7 +193,7 @@ func TestNUDConfigurationsBaseReachableTime(t *testing.T) {
 				// A neighbor cache is required to store NUDConfigurations. The
 				// networking stack will only allocate neighbor caches if a protocol
 				// providing link address resolution is specified (e.g. ARP or IPv6).
-				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				NUDConfigs:       c,
 				UseNeighborCache: true,
 			})
@@ -249,7 +250,7 @@ func TestNUDConfigurationsMinRandomFactor(t *testing.T) {
 				// A neighbor cache is required to store NUDConfigurations. The
 				// networking stack will only allocate neighbor caches if a protocol
 				// providing link address resolution is specified (e.g. ARP or IPv6).
-				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				NUDConfigs:       c,
 				UseNeighborCache: true,
 			})
@@ -329,7 +330,7 @@ func TestNUDConfigurationsMaxRandomFactor(t *testing.T) {
 				// A neighbor cache is required to store NUDConfigurations. The
 				// networking stack will only allocate neighbor caches if a protocol
 				// providing link address resolution is specified (e.g. ARP or IPv6).
-				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				NUDConfigs:       c,
 				UseNeighborCache: true,
 			})
@@ -391,7 +392,7 @@ func TestNUDConfigurationsRetransmitTimer(t *testing.T) {
 				// A neighbor cache is required to store NUDConfigurations. The
 				// networking stack will only allocate neighbor caches if a protocol
 				// providing link address resolution is specified (e.g. ARP or IPv6).
-				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				NUDConfigs:       c,
 				UseNeighborCache: true,
 			})
@@ -443,7 +444,7 @@ func TestNUDConfigurationsDelayFirstProbeTime(t *testing.T) {
 				// A neighbor cache is required to store NUDConfigurations. The
 				// networking stack will only allocate neighbor caches if a protocol
 				// providing link address resolution is specified (e.g. ARP or IPv6).
-				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				NUDConfigs:       c,
 				UseNeighborCache: true,
 			})
@@ -495,7 +496,7 @@ func TestNUDConfigurationsMaxMulticastProbes(t *testing.T) {
 				// A neighbor cache is required to store NUDConfigurations. The
 				// networking stack will only allocate neighbor caches if a protocol
 				// providing link address resolution is specified (e.g. ARP or IPv6).
-				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				NUDConfigs:       c,
 				UseNeighborCache: true,
 			})
@@ -547,7 +548,7 @@ func TestNUDConfigurationsMaxUnicastProbes(t *testing.T) {
 				// A neighbor cache is required to store NUDConfigurations. The
 				// networking stack will only allocate neighbor caches if a protocol
 				// providing link address resolution is specified (e.g. ARP or IPv6).
-				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				NUDConfigs:       c,
 				UseNeighborCache: true,
 			})
@@ -599,7 +600,7 @@ func TestNUDConfigurationsUnreachableTime(t *testing.T) {
 				// A neighbor cache is required to store NUDConfigurations. The
 				// networking stack will only allocate neighbor caches if a protocol
 				// providing link address resolution is specified (e.g. ARP or IPv6).
-				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				NUDConfigs:       c,
 				UseNeighborCache: true,
 			})

@@ -25,6 +25,7 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/buffer"
 	"gvisor.dev/gvisor/pkg/tcpip/checker"
+	"gvisor.dev/gvisor/pkg/tcpip/faketime"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/link/loopback"
 	"gvisor.dev/gvisor/pkg/tcpip/link/sniffer"
@@ -4191,7 +4192,7 @@ func checkSendBufferSize(t *testing.T, ep tcpip.Endpoint, v int) {
 
 func TestDefaultBufferSizes(t *testing.T) {
 	s := stack.New(stack.Options{
-		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol()},
+		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(faketime.NewNullClock())},
 		TransportProtocols: []stack.TransportProtocol{tcp.NewProtocol()},
 	})
 
@@ -4254,7 +4255,7 @@ func TestDefaultBufferSizes(t *testing.T) {
 
 func TestMinMaxBufferSizes(t *testing.T) {
 	s := stack.New(stack.Options{
-		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol()},
+		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(faketime.NewNullClock())},
 		TransportProtocols: []stack.TransportProtocol{tcp.NewProtocol()},
 	})
 
@@ -4309,7 +4310,7 @@ func TestMinMaxBufferSizes(t *testing.T) {
 
 func TestBindToDeviceOption(t *testing.T) {
 	s := stack.New(stack.Options{
-		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol()},
+		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(faketime.NewNullClock())},
 		TransportProtocols: []stack.TransportProtocol{tcp.NewProtocol()}})
 
 	ep, err := s.NewEndpoint(tcp.ProtocolNumber, ipv4.ProtocolNumber, &waiter.Queue{})
@@ -4360,8 +4361,8 @@ func TestBindToDeviceOption(t *testing.T) {
 func makeStack() (*stack.Stack, *tcpip.Error) {
 	s := stack.New(stack.Options{
 		NetworkProtocols: []stack.NetworkProtocol{
-			ipv4.NewProtocol(),
-			ipv6.NewProtocol(),
+			ipv4.NewProtocol(faketime.NewNullClock()),
+			ipv6.NewProtocol(faketime.NewNullClock()),
 		},
 		TransportProtocols: []stack.TransportProtocol{tcp.NewProtocol()},
 	})

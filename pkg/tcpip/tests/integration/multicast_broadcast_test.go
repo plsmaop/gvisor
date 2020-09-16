@@ -21,6 +21,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/buffer"
+	"gvisor.dev/gvisor/pkg/tcpip/faketime"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/link/channel"
 	"gvisor.dev/gvisor/pkg/tcpip/link/loopback"
@@ -140,8 +141,8 @@ func TestPingMulticastBroadcast(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ipv4Proto := ipv4.NewProtocol()
-			ipv6Proto := ipv6.NewProtocol()
+			ipv4Proto := ipv4.NewProtocol(faketime.NewNullClock())
+			ipv6Proto := ipv6.NewProtocol(faketime.NewNullClock())
 			s := stack.New(stack.Options{
 				NetworkProtocols:   []stack.NetworkProtocol{ipv4Proto, ipv6Proto},
 				TransportProtocols: []stack.TransportProtocol{icmp.NewProtocol4(), icmp.NewProtocol6()},
@@ -379,8 +380,9 @@ func TestIncomingMulticastAndBroadcast(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			clock := faketime.NewNullClock()
 			s := stack.New(stack.Options{
-				NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(), ipv6.NewProtocol()},
+				NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(clock), ipv6.NewProtocol(clock)},
 				TransportProtocols: []stack.TransportProtocol{udp.NewProtocol()},
 			})
 			e := channel.New(0, defaultMTU, "")
@@ -465,8 +467,9 @@ func TestReuseAddrAndBroadcast(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			clock := faketime.NewNullClock()
 			s := stack.New(stack.Options{
-				NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(), ipv6.NewProtocol()},
+				NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(clock), ipv6.NewProtocol(clock)},
 				TransportProtocols: []stack.TransportProtocol{udp.NewProtocol()},
 			})
 			if err := s.CreateNIC(nicID, loopback.New()); err != nil {

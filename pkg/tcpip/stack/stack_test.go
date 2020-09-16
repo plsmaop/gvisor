@@ -31,6 +31,7 @@ import (
 	"gvisor.dev/gvisor/pkg/rand"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/buffer"
+	"gvisor.dev/gvisor/pkg/tcpip/faketime"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/link/channel"
 	"gvisor.dev/gvisor/pkg/tcpip/link/loopback"
@@ -2336,7 +2337,7 @@ func TestNICAutoGenLinkLocalAddr(t *testing.T) {
 				autoGenAddrC: make(chan ndpAutoGenAddrEvent, 1),
 			}
 			opts := stack.Options{
-				NetworkProtocols:     []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols:     []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				AutoGenIPv6LinkLocal: test.autoGen,
 				NDPDisp:              &ndpDisp,
 				OpaqueIIDOpts:        test.iidOpts,
@@ -2430,7 +2431,7 @@ func TestNoLinkLocalAutoGenForLoopbackNIC(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			opts := stack.Options{
-				NetworkProtocols:     []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols:     []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				AutoGenIPv6LinkLocal: true,
 				OpaqueIIDOpts:        test.opaqueIIDOpts,
 			}
@@ -2463,7 +2464,7 @@ func TestNICAutoGenAddrDoesDAD(t *testing.T) {
 	}
 	ndpConfigs := stack.DefaultNDPConfigurations()
 	opts := stack.Options{
-		NetworkProtocols:     []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols:     []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NDPConfigs:           ndpConfigs,
 		AutoGenIPv6LinkLocal: true,
 		NDPDisp:              &ndpDisp,
@@ -2813,7 +2814,7 @@ func TestIPv6SourceAddressSelectionScopeAndSameAddress(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			e := channel.New(0, 1280, linkAddr1)
 			s := stack.New(stack.Options{
-				NetworkProtocols:   []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols:   []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				TransportProtocols: []stack.TransportProtocol{udp.NewProtocol()},
 				NDPConfigs: stack.NDPConfigurations{
 					HandleRAs:                  true,
@@ -2869,7 +2870,7 @@ func TestAddRemoveIPv4BroadcastAddressOnNICEnableDisable(t *testing.T) {
 
 	e := loopback.New()
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv4.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv4.NewProtocol(faketime.NewNullClock())},
 	})
 	nicOpts := stack.NICOptions{Disabled: true}
 	if err := s.CreateNICWithOptions(nicID, e, nicOpts); err != nil {
@@ -2921,7 +2922,7 @@ func TestLeaveIPv6SolicitedNodeAddrBeforeAddrRemoval(t *testing.T) {
 	const nicID = 1
 
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 	})
 	e := channel.New(10, 1280, linkAddr1)
 	if err := s.CreateNIC(1, e); err != nil {
@@ -2981,8 +2982,9 @@ func TestJoinLeaveMulticastOnNICEnableDisable(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			e := loopback.New()
+			clock := faketime.NewNullClock()
 			s := stack.New(stack.Options{
-				NetworkProtocols: []stack.NetworkProtocol{ipv4.NewProtocol(), ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocol{ipv4.NewProtocol(clock), ipv6.NewProtocol(clock)},
 			})
 			nicOpts := stack.NICOptions{Disabled: true}
 			if err := s.CreateNICWithOptions(nicID, e, nicOpts); err != nil {
@@ -3059,7 +3061,7 @@ func TestDoDADWhenNICEnabled(t *testing.T) {
 		dadC: make(chan ndpDADEvent),
 	}
 	opts := stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NDPConfigs: stack.NDPConfigurations{
 			DupAddrDetectTransmits: dadTransmits,
 			RetransmitTimer:        retransmitTimer,
@@ -3422,8 +3424,9 @@ func TestOutgoingSubnetBroadcast(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			clock := faketime.NewNullClock()
 			s := stack.New(stack.Options{
-				NetworkProtocols: []stack.NetworkProtocol{ipv4.NewProtocol(), ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocol{ipv4.NewProtocol(clock), ipv6.NewProtocol(clock)},
 			})
 			ep := channel.New(0, defaultMTU, "")
 			if err := s.CreateNIC(nicID1, ep); err != nil {
@@ -3461,7 +3464,7 @@ func TestResolveWith(t *testing.T) {
 	)
 
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv4.NewProtocol(), arp.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv4.NewProtocol(faketime.NewNullClock()), arp.NewProtocol()},
 	})
 	ep := channel.New(0, defaultMTU, "")
 	ep.LinkEPCapabilities |= stack.CapabilityResolutionRequired

@@ -111,8 +111,9 @@ func main() {
 
 	// Create the stack with ip and tcp protocols, then add a tun-based
 	// NIC and address.
+	clock := &tcpip.StdClock{}
 	s := stack.New(stack.Options{
-		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(), ipv6.NewProtocol(), arp.NewProtocol()},
+		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(clock), ipv6.NewProtocol(clock), arp.NewProtocol()},
 		TransportProtocols: []stack.TransportProtocol{tcp.NewProtocol()},
 	})
 

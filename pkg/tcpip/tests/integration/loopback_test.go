@@ -20,6 +20,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/buffer"
+	"gvisor.dev/gvisor/pkg/tcpip/faketime"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/link/loopback"
 	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
@@ -119,8 +120,9 @@ func TestLoopbackAcceptAllInSubnet(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			clock := faketime.NewNullClock()
 			s := stack.New(stack.Options{
-				NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(), ipv6.NewProtocol()},
+				NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(clock), ipv6.NewProtocol(clock)},
 				TransportProtocols: []stack.TransportProtocol{udp.NewProtocol()},
 			})
 			if err := s.CreateNIC(nicID, loopback.New()); err != nil {
@@ -203,7 +205,7 @@ func TestLoopbackSubnetLifetimeBoundToAddr(t *testing.T) {
 	otherAddr := tcpip.Address(addrBytes)
 
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv4.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv4.NewProtocol(faketime.NewNullClock())},
 	})
 	if err := s.CreateNIC(nicID, loopback.New()); err != nil {
 		t.Fatalf("s.CreateNIC(%d, _): %s", nicID, err)

@@ -26,6 +26,7 @@ import (
 
 	"golang.org/x/net/nettest"
 	"gvisor.dev/gvisor/pkg/tcpip"
+	"gvisor.dev/gvisor/pkg/tcpip/faketime"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/link/loopback"
 	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
@@ -60,8 +61,9 @@ func TestTimeouts(t *testing.T) {
 
 func newLoopbackStack() (*stack.Stack, *tcpip.Error) {
 	// Create the stack and add a NIC.
+	clock := faketime.NewNullClock()
 	s := stack.New(stack.Options{
-		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(), ipv6.NewProtocol()},
+		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(clock), ipv6.NewProtocol(clock)},
 		TransportProtocols: []stack.TransportProtocol{tcp.NewProtocol(), udp.NewProtocol()},
 	})
 

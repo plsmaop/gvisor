@@ -19,6 +19,7 @@ import (
 
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/buffer"
+	"gvisor.dev/gvisor/pkg/tcpip/faketime"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/link/channel"
 	"gvisor.dev/gvisor/pkg/tcpip/link/loopback"
@@ -194,7 +195,7 @@ func (*testObject) AddHeader(local, remote tcpip.LinkAddress, protocol tcpip.Net
 
 func buildIPv4Route(local, remote tcpip.Address) (stack.Route, *tcpip.Error) {
 	s := stack.New(stack.Options{
-		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol()},
+		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(faketime.NewNullClock())},
 		TransportProtocols: []stack.TransportProtocol{udp.NewProtocol(), tcp.NewProtocol()},
 	})
 	s.CreateNIC(nicID, loopback.New())
@@ -210,7 +211,7 @@ func buildIPv4Route(local, remote tcpip.Address) (stack.Route, *tcpip.Error) {
 
 func buildIPv6Route(local, remote tcpip.Address) (stack.Route, *tcpip.Error) {
 	s := stack.New(stack.Options{
-		NetworkProtocols:   []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols:   []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		TransportProtocols: []stack.TransportProtocol{udp.NewProtocol(), tcp.NewProtocol()},
 	})
 	s.CreateNIC(nicID, loopback.New())
@@ -227,8 +228,9 @@ func buildIPv6Route(local, remote tcpip.Address) (stack.Route, *tcpip.Error) {
 func buildDummyStack(t *testing.T) *stack.Stack {
 	t.Helper()
 
+	clock := faketime.NewNullClock()
 	s := stack.New(stack.Options{
-		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(), ipv6.NewProtocol()},
+		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(clock), ipv6.NewProtocol(clock)},
 		TransportProtocols: []stack.TransportProtocol{udp.NewProtocol(), tcp.NewProtocol()},
 	})
 	e := channel.New(0, 1280, "")
@@ -249,7 +251,7 @@ func buildDummyStack(t *testing.T) *stack.Stack {
 
 func TestIPv4Send(t *testing.T) {
 	o := testObject{t: t, v4: true}
-	proto := ipv4.NewProtocol()
+	proto := ipv4.NewProtocol(faketime.NewNullClock())
 	ep := proto.NewEndpoint(nicID, nil, nil, nil, &o, buildDummyStack(t))
 	defer ep.Close()
 
@@ -286,7 +288,7 @@ func TestIPv4Send(t *testing.T) {
 
 func TestIPv4Receive(t *testing.T) {
 	o := testObject{t: t, v4: true}
-	proto := ipv4.NewProtocol()
+	proto := ipv4.NewProtocol(faketime.NewNullClock())
 	ep := proto.NewEndpoint(nicID, nil, nil, &o, nil, buildDummyStack(t))
 	defer ep.Close()
 
@@ -356,7 +358,7 @@ func TestIPv4ReceiveControl(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			o := testObject{t: t}
-			proto := ipv4.NewProtocol()
+			proto := ipv4.NewProtocol(faketime.NewNullClock())
 			ep := proto.NewEndpoint(nicID, nil, nil, &o, nil, buildDummyStack(t))
 			defer ep.Close()
 
@@ -417,7 +419,7 @@ func TestIPv4ReceiveControl(t *testing.T) {
 
 func TestIPv4FragmentationReceive(t *testing.T) {
 	o := testObject{t: t, v4: true}
-	proto := ipv4.NewProtocol()
+	proto := ipv4.NewProtocol(faketime.NewNullClock())
 	ep := proto.NewEndpoint(nicID, nil, nil, &o, nil, buildDummyStack(t))
 	defer ep.Close()
 
@@ -494,7 +496,7 @@ func TestIPv4FragmentationReceive(t *testing.T) {
 
 func TestIPv6Send(t *testing.T) {
 	o := testObject{t: t}
-	proto := ipv6.NewProtocol()
+	proto := ipv6.NewProtocol(faketime.NewNullClock())
 	ep := proto.NewEndpoint(nicID, nil, nil, &o, channel.New(0, 1280, ""), buildDummyStack(t))
 	defer ep.Close()
 
@@ -531,7 +533,7 @@ func TestIPv6Send(t *testing.T) {
 
 func TestIPv6Receive(t *testing.T) {
 	o := testObject{t: t}
-	proto := ipv6.NewProtocol()
+	proto := ipv6.NewProtocol(faketime.NewNullClock())
 	ep := proto.NewEndpoint(nicID, nil, nil, &o, nil, buildDummyStack(t))
 	defer ep.Close()
 
@@ -610,7 +612,7 @@ func TestIPv6ReceiveControl(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			o := testObject{t: t}
-			proto := ipv6.NewProtocol()
+			proto := ipv6.NewProtocol(faketime.NewNullClock())
 			ep := proto.NewEndpoint(nicID, nil, nil, &o, nil, buildDummyStack(t))
 			defer ep.Close()
 

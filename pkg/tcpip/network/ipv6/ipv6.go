@@ -605,9 +605,9 @@ func calculateMTU(mtu uint32) uint32 {
 }
 
 // NewProtocol returns an IPv6 network protocol.
-func NewProtocol() stack.NetworkProtocol {
+func NewProtocol(clock tcpip.Clock) stack.NetworkProtocol {
 	return &protocol{
 		defaultTTL:    DefaultTTL,
-		fragmentation: fragmentation.NewFragmentation(header.IPv6FragmentExtHdrFragmentOffsetBytesPerUnit, fragmentation.HighFragThreshold, fragmentation.LowFragThreshold, fragmentation.DefaultReassembleTimeout),
+		fragmentation: fragmentation.NewFragmentation(header.IPv6FragmentExtHdrFragmentOffsetBytesPerUnit, fragmentation.HighFragThreshold, fragmentation.LowFragThreshold, fragmentation.DefaultReassembleTimeout, clock),
 	}
 }

@@ -127,7 +127,7 @@ func main() {
 	// Create the stack with ipv4 and tcp protocols, then add a tun-based
 	// NIC and ipv4 address.
 	s := stack.New(stack.Options{
-		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol()},
+		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(&tcpip.StdClock{})},
 		TransportProtocols: []stack.TransportProtocol{tcp.NewProtocol()},
 	})
 

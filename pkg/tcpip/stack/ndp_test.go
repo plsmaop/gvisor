@@ -26,6 +26,7 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/buffer"
 	"gvisor.dev/gvisor/pkg/tcpip/checker"
+	"gvisor.dev/gvisor/pkg/tcpip/faketime"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/link/channel"
 	"gvisor.dev/gvisor/pkg/tcpip/network/ipv6"
@@ -320,7 +321,7 @@ func TestDADDisabled(t *testing.T) {
 		dadC: make(chan ndpDADEvent, 1),
 	}
 	opts := stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NDPDisp:          &ndpDisp,
 	}
 
@@ -414,7 +415,7 @@ func TestDADResolve(t *testing.T) {
 				dadC: make(chan ndpDADEvent),
 			}
 			opts := stack.Options{
-				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				NDPDisp:          &ndpDisp,
 			}
 			opts.NDPConfigs.RetransmitTimer = test.retransTimer
@@ -638,7 +639,7 @@ func TestDADFail(t *testing.T) {
 			}
 			ndpConfigs := stack.DefaultNDPConfigurations()
 			opts := stack.Options{
-				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				NDPConfigs:       ndpConfigs,
 				NDPDisp:          &ndpDisp,
 			}
@@ -759,7 +760,7 @@ func TestDADStop(t *testing.T) {
 				DupAddrDetectTransmits: 2,
 			}
 			opts := stack.Options{
-				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				NDPDisp:          &ndpDisp,
 				NDPConfigs:       ndpConfigs,
 			}
@@ -819,7 +820,7 @@ func TestDADStop(t *testing.T) {
 // we attempt to update NDP configurations using an invalid NICID.
 func TestSetNDPConfigurationFailsForBadNICID(t *testing.T) {
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 	})
 
 	// No NIC with ID 1 yet.
@@ -863,7 +864,7 @@ func TestSetNDPConfigurations(t *testing.T) {
 			}
 			e := channel.New(0, 1280, linkAddr1)
 			s := stack.New(stack.Options{
-				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				NDPDisp:          &ndpDisp,
 			})
 
@@ -1113,7 +1114,7 @@ func TestNoRouterDiscovery(t *testing.T) {
 			}
 			e := channel.New(0, 1280, linkAddr1)
 			s := stack.New(stack.Options{
-				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				NDPConfigs: stack.NDPConfigurations{
 					HandleRAs:              handle,
 					DiscoverDefaultRouters: discover,
@@ -1151,7 +1152,7 @@ func TestRouterDiscoveryDispatcherNoRemember(t *testing.T) {
 	}
 	e := channel.New(0, 1280, linkAddr1)
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NDPConfigs: stack.NDPConfigurations{
 			HandleRAs:              true,
 			DiscoverDefaultRouters: true,
@@ -1192,7 +1193,7 @@ func TestRouterDiscovery(t *testing.T) {
 	}
 	e := channel.New(0, 1280, linkAddr1)
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NDPConfigs: stack.NDPConfigurations{
 			HandleRAs:              true,
 			DiscoverDefaultRouters: true,
@@ -1293,7 +1294,7 @@ func TestRouterDiscoveryMaxRouters(t *testing.T) {
 	}
 	e := channel.New(0, 1280, linkAddr1)
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NDPConfigs: stack.NDPConfigurations{
 			HandleRAs:              true,
 			DiscoverDefaultRouters: true,
@@ -1358,7 +1359,7 @@ func TestNoPrefixDiscovery(t *testing.T) {
 			}
 			e := channel.New(0, 1280, linkAddr1)
 			s := stack.New(stack.Options{
-				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				NDPConfigs: stack.NDPConfigurations{
 					HandleRAs:              handle,
 					DiscoverOnLinkPrefixes: discover,
@@ -1399,7 +1400,7 @@ func TestPrefixDiscoveryDispatcherNoRemember(t *testing.T) {
 	}
 	e := channel.New(0, 1280, linkAddr1)
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NDPConfigs: stack.NDPConfigurations{
 			HandleRAs:              true,
 			DiscoverDefaultRouters: false,
@@ -1445,7 +1446,7 @@ func TestPrefixDiscovery(t *testing.T) {
 	}
 	e := channel.New(0, 1280, linkAddr1)
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NDPConfigs: stack.NDPConfigurations{
 			HandleRAs:              true,
 			DiscoverOnLinkPrefixes: true,
@@ -1545,7 +1546,7 @@ func TestPrefixDiscoveryWithInfiniteLifetime(t *testing.T) {
 	}
 	e := channel.New(0, 1280, linkAddr1)
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NDPConfigs: stack.NDPConfigurations{
 			HandleRAs:              true,
 			DiscoverOnLinkPrefixes: true,
@@ -1629,7 +1630,7 @@ func TestPrefixDiscoveryMaxOnLinkPrefixes(t *testing.T) {
 	}
 	e := channel.New(0, 1280, linkAddr1)
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NDPConfigs: stack.NDPConfigurations{
 			HandleRAs:              true,
 			DiscoverDefaultRouters: false,
@@ -1716,7 +1717,7 @@ func TestNoAutoGenAddr(t *testing.T) {
 			}
 			e := channel.New(0, 1280, linkAddr1)
 			s := stack.New(stack.Options{
-				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				NDPConfigs: stack.NDPConfigurations{
 					HandleRAs:              handle,
 					AutoGenGlobalAddresses: autogen,
@@ -1766,7 +1767,7 @@ func TestAutoGenAddr(t *testing.T) {
 	}
 	e := channel.New(0, 1280, linkAddr1)
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NDPConfigs: stack.NDPConfigurations{
 			HandleRAs:              true,
 			AutoGenGlobalAddresses: true,
@@ -1931,7 +1932,7 @@ func TestAutoGenTempAddr(t *testing.T) {
 				}
 				e := channel.New(0, 1280, linkAddr1)
 				s := stack.New(stack.Options{
-					NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+					NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 					NDPConfigs: stack.NDPConfigurations{
 						DupAddrDetectTransmits:     test.dupAddrTransmits,
 						RetransmitTimer:            test.retransmitTimer,
@@ -2160,7 +2161,7 @@ func TestNoAutoGenTempAddrForLinkLocal(t *testing.T) {
 				}
 				e := channel.New(0, 1280, linkAddr1)
 				s := stack.New(stack.Options{
-					NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+					NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 					NDPConfigs: stack.NDPConfigurations{
 						AutoGenTempGlobalAddresses: true,
 					},
@@ -2228,7 +2229,7 @@ func TestNoAutoGenTempAddrWithoutStableAddr(t *testing.T) {
 	}
 	e := channel.New(0, 1280, linkAddr1)
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NDPConfigs: stack.NDPConfigurations{
 			DupAddrDetectTransmits:     dadTransmits,
 			RetransmitTimer:            retransmitTimer,
@@ -2324,7 +2325,7 @@ func TestAutoGenTempAddrRegen(t *testing.T) {
 		RegenAdvanceDuration:       newMinVLDuration - regenAfter,
 	}
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NDPConfigs:       ndpConfigs,
 		NDPDisp:          &ndpDisp,
 	})
@@ -2469,7 +2470,7 @@ func TestAutoGenTempAddrRegenJobUpdates(t *testing.T) {
 		RegenAdvanceDuration:       newMinVLDuration - regenAfter,
 	}
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NDPConfigs:       ndpConfigs,
 		NDPDisp:          &ndpDisp,
 	})
@@ -2662,7 +2663,7 @@ func TestMixedSLAACAddrConflictRegen(t *testing.T) {
 				AutoGenAddressConflictRetries: 1,
 			}
 			s := stack.New(stack.Options{
-				NetworkProtocols:   []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols:   []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				TransportProtocols: []stack.TransportProtocol{udp.NewProtocol()},
 				NDPConfigs:         ndpConfigs,
 				NDPDisp:            &ndpDisp,
@@ -2794,7 +2795,7 @@ func stackAndNdpDispatcherWithDefaultRoute(t *testing.T, nicID tcpip.NICID, useN
 	}
 	e := channel.New(0, 1280, linkAddr1)
 	s := stack.New(stack.Options{
-		NetworkProtocols:   []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols:   []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		TransportProtocols: []stack.TransportProtocol{udp.NewProtocol()},
 		NDPConfigs: stack.NDPConfigurations{
 			HandleRAs:              true,
@@ -3307,7 +3308,7 @@ func TestAutoGenAddrFiniteToInfiniteToFiniteVL(t *testing.T) {
 				}
 				e := channel.New(0, 1280, linkAddr1)
 				s := stack.New(stack.Options{
-					NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+					NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 					NDPConfigs: stack.NDPConfigurations{
 						HandleRAs:              true,
 						AutoGenGlobalAddresses: true,
@@ -3449,7 +3450,7 @@ func TestAutoGenAddrValidLifetimeUpdates(t *testing.T) {
 				}
 				e := channel.New(10, 1280, linkAddr1)
 				s := stack.New(stack.Options{
-					NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+					NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 					NDPConfigs: stack.NDPConfigurations{
 						HandleRAs:              true,
 						AutoGenGlobalAddresses: true,
@@ -3515,7 +3516,7 @@ func TestAutoGenAddrRemoval(t *testing.T) {
 	}
 	e := channel.New(0, 1280, linkAddr1)
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NDPConfigs: stack.NDPConfigurations{
 			HandleRAs:              true,
 			AutoGenGlobalAddresses: true,
@@ -3700,7 +3701,7 @@ func TestAutoGenAddrStaticConflict(t *testing.T) {
 	}
 	e := channel.New(0, 1280, linkAddr1)
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NDPConfigs: stack.NDPConfigurations{
 			HandleRAs:              true,
 			AutoGenGlobalAddresses: true,
@@ -3781,7 +3782,7 @@ func TestAutoGenAddrWithOpaqueIID(t *testing.T) {
 	}
 	e := channel.New(0, 1280, linkAddr1)
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NDPConfigs: stack.NDPConfigurations{
 			HandleRAs:              true,
 			AutoGenGlobalAddresses: true,
@@ -4029,7 +4030,7 @@ func TestAutoGenAddrInResponseToDADConflicts(t *testing.T) {
 						ndpConfigs := addrType.ndpConfigs
 						ndpConfigs.AutoGenAddressConflictRetries = maxRetries
 						s := stack.New(stack.Options{
-							NetworkProtocols:     []stack.NetworkProtocol{ipv6.NewProtocol()},
+							NetworkProtocols:     []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 							AutoGenIPv6LinkLocal: addrType.autoGenLinkLocal,
 							NDPConfigs:           ndpConfigs,
 							NDPDisp:              &ndpDisp,
@@ -4165,7 +4166,7 @@ func TestAutoGenAddrWithEUI64IIDNoDADRetries(t *testing.T) {
 			}
 			e := channel.New(0, 1280, linkAddr1)
 			s := stack.New(stack.Options{
-				NetworkProtocols:     []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols:     []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				AutoGenIPv6LinkLocal: addrType.autoGenLinkLocal,
 				NDPConfigs:           addrType.ndpConfigs,
 				NDPDisp:              &ndpDisp,
@@ -4250,7 +4251,7 @@ func TestAutoGenAddrContinuesLifetimesAfterRetry(t *testing.T) {
 	}
 	e := channel.New(0, 1280, linkAddr1)
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NDPConfigs: stack.NDPConfigurations{
 			DupAddrDetectTransmits:        dadTransmits,
 			RetransmitTimer:               retransmitTimer,
@@ -4459,7 +4460,7 @@ func TestNDPRecursiveDNSServerDispatch(t *testing.T) {
 			}
 			e := channel.New(0, 1280, linkAddr1)
 			s := stack.New(stack.Options{
-				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				NDPConfigs: stack.NDPConfigurations{
 					HandleRAs: true,
 				},
@@ -4509,7 +4510,7 @@ func TestNDPDNSSearchListDispatch(t *testing.T) {
 	}
 	e := channel.New(0, 1280, linkAddr1)
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NDPConfigs: stack.NDPConfigurations{
 			HandleRAs: true,
 		},
@@ -4694,7 +4695,7 @@ func TestCleanupNDPState(t *testing.T) {
 				autoGenAddrC:   make(chan ndpAutoGenAddrEvent, test.maxAutoGenAddrEvents),
 			}
 			s := stack.New(stack.Options{
-				NetworkProtocols:     []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols:     []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				AutoGenIPv6LinkLocal: true,
 				NDPConfigs: stack.NDPConfigurations{
 					HandleRAs:              true,
@@ -4967,7 +4968,7 @@ func TestDHCPv6ConfigurationFromNDPDA(t *testing.T) {
 	}
 	e := channel.New(0, 1280, linkAddr1)
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 		NDPConfigs: stack.NDPConfigurations{
 			HandleRAs: true,
 		},
@@ -5217,7 +5218,7 @@ func TestRouterSolicitation(t *testing.T) {
 					}
 				}
 				s := stack.New(stack.Options{
-					NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+					NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 					NDPConfigs: stack.NDPConfigurations{
 						MaxRtrSolicitations:     test.maxRtrSolicit,
 						RtrSolicitationInterval: test.rtrSolicitInt,
@@ -5357,7 +5358,7 @@ func TestStopStartSolicitingRouters(t *testing.T) {
 					checker.NDPRS())
 			}
 			s := stack.New(stack.Options{
-				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol(faketime.NewNullClock())},
 				NDPConfigs: stack.NDPConfigurations{
 					MaxRtrSolicitations:     maxRtrSolicitations,
 					RtrSolicitationInterval: interval,

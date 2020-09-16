@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/buffer"
+	"gvisor.dev/gvisor/pkg/tcpip/faketime"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/link/channel"
 	"gvisor.dev/gvisor/pkg/tcpip/link/sniffer"
@@ -36,7 +37,7 @@ import (
 
 func TestExcludeBroadcast(t *testing.T) {
 	s := stack.New(stack.Options{
-		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol()},
+		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(faketime.NewNullClock())},
 		TransportProtocols: []stack.TransportProtocol{udp.NewProtocol()},
 	})
 
@@ -518,7 +519,7 @@ func TestInvalidFragments(t *testing.T) {
 
 			s := stack.New(stack.Options{
 				NetworkProtocols: []stack.NetworkProtocol{
-					ipv4.NewProtocol(),
+					ipv4.NewProtocol(faketime.NewNullClock()),
 				},
 			})
 			e := channel.New(0, 1500, linkAddr)
@@ -929,7 +930,7 @@ func TestReceiveFragments(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			// Setup a stack and endpoint.
 			s := stack.New(stack.Options{
-				NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol()},
+				NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(faketime.NewNullClock())},
 				TransportProtocols: []stack.TransportProtocol{udp.NewProtocol()},
 			})
 			e := channel.New(0, 1280, tcpip.LinkAddress("\xf0\x00"))
@@ -1140,7 +1141,7 @@ func TestWriteStats(t *testing.T) {
 
 func buildRoute(t *testing.T, ep stack.LinkEndpoint) stack.Route {
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv4.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{ipv4.NewProtocol(faketime.NewNullClock())},
 	})
 	if err := s.CreateNIC(1, ep); err != nil {
 		t.Fatalf("CreateNIC(1, _) failed: %s", err)

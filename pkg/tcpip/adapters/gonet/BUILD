@@ -24,6 +24,7 @@ go_test(
     library = ":gonet",
     deps = [
         "//pkg/tcpip",
+        "//pkg/tcpip/faketime",
         "//pkg/tcpip/header",
         "//pkg/tcpip/link/loopback",
         "//pkg/tcpip/network/ipv4",

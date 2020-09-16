@@ -21,6 +21,7 @@ import (
 
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/buffer"
+	"gvisor.dev/gvisor/pkg/tcpip/faketime"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/link/channel"
 	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
@@ -50,8 +51,9 @@ type testContext struct {
 
 // newDualTestContextMultiNIC creates the testing context and also linkEpIDs NICs.
 func newDualTestContextMultiNIC(t *testing.T, mtu uint32, linkEpIDs []tcpip.NICID) *testContext {
+	clock := faketime.NewNullClock()
 	s := stack.New(stack.Options{
-		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(), ipv6.NewProtocol()},
+		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(clock), ipv6.NewProtocol(clock)},
 		TransportProtocols: []stack.TransportProtocol{udp.NewProtocol()},
 	})
 	linkEps := make(map[tcpip.NICID]*channel.Endpoint)
@@ -182,7 +184,7 @@ func TestTransportDemuxerRegister(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			s := stack.New(stack.Options{
-				NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol()},
+				NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(faketime.NewNullClock())},
 				TransportProtocols: []stack.TransportProtocol{udp.NewProtocol()},
 			})
 			var wq waiter.Queue

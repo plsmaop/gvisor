@@ -21,6 +21,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/buffer"
+	"gvisor.dev/gvisor/pkg/tcpip/faketime"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/link/channel"
 	"gvisor.dev/gvisor/pkg/tcpip/network/testutil"
@@ -151,7 +152,7 @@ func TestReceiveOnAllNodesMulticastAddr(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			s := stack.New(stack.Options{
-				NetworkProtocols:   []stack.NetworkProtocol{NewProtocol()},
+				NetworkProtocols:   []stack.NetworkProtocol{NewProtocol(faketime.NewNullClock())},
 				TransportProtocols: []stack.TransportProtocol{test.protocolFactory},
 			})
 			e := channel.New(10, 1280, linkAddr1)
@@ -186,7 +187,7 @@ func TestReceiveOnSolicitedNodeAddr(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			s := stack.New(stack.Options{
-				NetworkProtocols:   []stack.NetworkProtocol{NewProtocol()},
+				NetworkProtocols:   []stack.NetworkProtocol{NewProtocol(faketime.NewNullClock())},
 				TransportProtocols: []stack.TransportProtocol{test.protocolFactory},
 			})
 			e := channel.New(1, 1280, linkAddr1)
@@ -273,7 +274,7 @@ func TestAddIpv6Address(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			s := stack.New(stack.Options{
-				NetworkProtocols: []stack.NetworkProtocol{NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocol{NewProtocol(faketime.NewNullClock())},
 			})
 			if err := s.CreateNIC(1, &stubLinkEndpoint{}); err != nil {
 				t.Fatalf("CreateNIC(_) = %s", err)
@@ -579,7 +580,7 @@ func TestReceiveIPv6ExtHdrs(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			s := stack.New(stack.Options{
-				NetworkProtocols:   []stack.NetworkProtocol{NewProtocol()},
+				NetworkProtocols:   []stack.NetworkProtocol{NewProtocol(faketime.NewNullClock())},
 				TransportProtocols: []stack.TransportProtocol{udp.NewProtocol()},
 			})
 			e := channel.New(0, 1280, linkAddr1)
@@ -1549,7 +1550,7 @@ func TestReceiveIPv6Fragments(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			s := stack.New(stack.Options{
-				NetworkProtocols:   []stack.NetworkProtocol{NewProtocol()},
+				NetworkProtocols:   []stack.NetworkProtocol{NewProtocol(faketime.NewNullClock())},
 				TransportProtocols: []stack.TransportProtocol{udp.NewProtocol()},
 			})
 			e := channel.New(0, 1280, linkAddr1)
@@ -1669,7 +1670,7 @@ func TestInvalidIPv6Fragments(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			s := stack.New(stack.Options{
 				NetworkProtocols: []stack.NetworkProtocol{
-					NewProtocol(),
+					NewProtocol(faketime.NewNullClock()),
 				},
 			})
 			e := channel.New(0, 1500, linkAddr1)
@@ -1847,7 +1848,7 @@ func TestWriteStats(t *testing.T) {
 
 func buildRoute(t *testing.T, ep stack.LinkEndpoint) stack.Route {
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocol{NewProtocol(faketime.NewNullClock())},
 	})
 	if err := s.CreateNIC(1, ep); err != nil {
 		t.Fatalf("CreateNIC(1, _) failed: %s", err)
