@@ -251,3 +251,11 @@ func TestTCPLingerShutdownSendNonZeroTimeout(t *testing.T) {
 		})
 	}
 }
+
+func TestTCPLingerNonEstablished(t *testing.T) {
+	dut := testbench.NewDUT(t)
+	newFD := dut.Socket(t, unix.AF_INET, unix.SOCK_STREAM, unix.IPPROTO_TCP)
+	dut.SetSockLingerOption(t, newFD, lingerDuration, true)
+	dut.Close(t, newFD)
+	dut.TearDown()
+}

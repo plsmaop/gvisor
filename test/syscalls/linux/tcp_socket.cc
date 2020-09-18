@@ -1643,6 +1643,27 @@ TEST_P(SimpleTcpSocketTest, GetSocketDetachFilter) {
               SyscallFailsWithErrno(ENOPROTOOPT));
 }
 
+TEST_P(SimpleTcpSocketTest, CloseNonConnectedLingerOption) {
+  FileDescriptor s =
+      ASSERT_NO_ERRNO_AND_VALUE(Socket(GetParam(), SOCK_STREAM, IPPROTO_TCP));
+
+  // Set the SO_LINGER option.
+  struct linger sl;
+  sl.l_onoff = 1;
+  sl.l_linger = 10;
+  ASSERT_THAT(setsockopt(s.get(), SOL_SOCKET, SO_LINGER, &sl, sizeof(sl)),
+              SyscallSucceeds());
+
+  struct pollfd poll_fd = {s.get(), POLLHUP, 0};
+  constexpr int kPollTimeoutMs = 2000;
+  ASSERT_THAT(RetryEINTR(poll)(&poll_fd, 1, kPollTimeoutMs),
+              SyscallSucceedsWithValue(1));
+
+  ScopedThread t([&]() { EXPECT_THAT(close(s.release()), SyscallSucceeds()); });
+
+  t.Join();
+}
+
 INSTANTIATE_TEST_SUITE_P(AllInetTests, SimpleTcpSocketTest,
                          ::testing::Values(AF_INET, AF_INET6));
 
