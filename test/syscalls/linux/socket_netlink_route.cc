@@ -514,6 +514,33 @@ TEST(NetlinkRouteTest, AddAddr) {
   EXPECT_THAT(
       NetlinkRequestAckOrError(fd, req.hdr.nlmsg_seq, &req, req.hdr.nlmsg_len),
       PosixErrorIs(EEXIST, ::testing::_));
+
+  // Delete the address we just added.
+  // Use a new struct so the test doesn't depend on a modification of the
+  // request struct.
+  struct request delreq = {};
+  delreq.hdr.nlmsg_type = RTM_DELADDR;
+  delreq.hdr.nlmsg_seq = kSeq;
+  delreq.ifa.ifa_family = AF_INET;
+  delreq.ifa.ifa_prefixlen = 24;
+  delreq.ifa.ifa_flags = 0;
+  delreq.ifa.ifa_scope = 0;
+  delreq.ifa.ifa_index = loopback_link.index;
+  delreq.rtattr.rta_type = IFA_LOCAL;
+  delreq.rtattr.rta_len = RTA_LENGTH(sizeof(delreq.addr));
+  inet_pton(AF_INET, "10.0.0.1", &delreq.addr);
+  delreq.hdr.nlmsg_len =
+      NLMSG_LENGTH(sizeof(delreq.ifa)) + NLMSG_ALIGN(delreq.rtattr.rta_len);
+
+  // First delete should succeed, as address exists.
+  delreq.hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+  EXPECT_NO_ERRNO(NetlinkRequestAckOrError(fd, delreq.hdr.nlmsg_seq, &delreq,
+                                           delreq.hdr.nlmsg_len));
+
+  // Second delete should fail, as address no longer exists.
+  EXPECT_THAT(NetlinkRequestAckOrError(fd, delreq.hdr.nlmsg_seq, &delreq,
+                                       delreq.hdr.nlmsg_len),
+              PosixErrorIs(EINVAL, ::testing::_));
 }
 
 // GetRouteDump tests a RTM_GETROUTE + NLM_F_DUMP request.

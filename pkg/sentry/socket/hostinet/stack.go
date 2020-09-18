@@ -316,6 +316,11 @@ func (s *Stack) AddInterfaceAddr(idx int32, addr inet.InterfaceAddr) error {
 	return syserror.EACCES
 }
 
+// RemoveInterfaceAddr implements inet.Stack.AddInterfaceAddr.
+func (s *Stack) RemoveInterfaceAddr(idx int32, addr inet.InterfaceAddr) error {
+	return syserror.EACCES
+}
+
 // SupportsIPv6 implements inet.Stack.SupportsIPv6.
 func (s *Stack) SupportsIPv6() bool {
 	return s.supportsIPv6

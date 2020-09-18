@@ -100,38 +100,41 @@ func (s *Stack) InterfaceAddrs() map[int32][]inet.InterfaceAddr {
 	return nicAddrs
 }
 
-// AddInterfaceAddr implements inet.Stack.AddInterfaceAddr.
-func (s *Stack) AddInterfaceAddr(idx int32, addr inet.InterfaceAddr) error {
+// addrAndLocalRoute creates a ProtocolAddress and local network Route for the
+// given address.
+func addrAndLocalRoute(nic tcpip.NICID, addr inet.InterfaceAddr) (tcpip.ProtocolAddress, tcpip.Route, error) {
 	var (
-		protocol tcpip.NetworkProtocolNumber
-		address  tcpip.Address
+		protocol        tcpip.NetworkProtocolNumber
+		address         tcpip.Address
+		protocolAddress tcpip.ProtocolAddress
+		localRoute      tcpip.Route
 	)
 	switch addr.Family {
 	case linux.AF_INET:
 		if len(addr.Addr) < header.IPv4AddressSize {
-			return syserror.EINVAL
+			return protocolAddress, localRoute, syserror.EINVAL
 		}
 		if addr.PrefixLen > header.IPv4AddressSize*8 {
-			return syserror.EINVAL
+			return protocolAddress, localRoute, syserror.EINVAL
 		}
 		protocol = ipv4.ProtocolNumber
 		address = tcpip.Address(addr.Addr[:header.IPv4AddressSize])
 
 	case linux.AF_INET6:
 		if len(addr.Addr) < header.IPv6AddressSize {
-			return syserror.EINVAL
+			return protocolAddress, localRoute, syserror.EINVAL
 		}
 		if addr.PrefixLen > header.IPv6AddressSize*8 {
-			return syserror.EINVAL
+			return protocolAddress, localRoute, syserror.EINVAL
 		}
 		protocol = ipv6.ProtocolNumber
 		address = tcpip.Address(addr.Addr[:header.IPv6AddressSize])
 
 	default:
-		return syserror.ENOTSUP
+		return protocolAddress, localRoute, syserror.ENOTSUP
 	}
 
-	protocolAddress := tcpip.ProtocolAddress{
+	protocolAddress = tcpip.ProtocolAddress{
 		Protocol: protocol,
 		AddressWithPrefix: tcpip.AddressWithPrefix{
 			Address:   address,
@@ -139,17 +142,54 @@ func (s *Stack) AddInterfaceAddr(idx int32, addr inet.InterfaceAddr) error {
 		},
 	}
 
+	localRoute = tcpip.Route{
+		Destination: protocolAddress.AddressWithPrefix.Subnet(),
+		Gateway:     "", // No gateway for local network.
+		NIC:         nic,
+	}
+
+	return protocolAddress, localRoute, nil
+}
+
+// AddInterfaceAddr implements inet.Stack.AddInterfaceAddr.
+func (s *Stack) AddInterfaceAddr(idx int32, addr inet.InterfaceAddr) error {
+	nicID := tcpip.NICID(idx)
+	protocolAddress, localRoute, err := addrAndLocalRoute(nicID, addr)
+	if err != nil {
+		return err
+	}
+
 	// Attach address to interface.
-	if err := s.Stack.AddProtocolAddressWithOptions(tcpip.NICID(idx), protocolAddress, stack.CanBePrimaryEndpoint); err != nil {
+	if err := s.Stack.AddProtocolAddressWithOptions(nicID, protocolAddress, stack.CanBePrimaryEndpoint); err != nil {
 		return syserr.TranslateNetstackError(err).ToError()
 	}
 
 	// Add route for local network.
-	s.Stack.AddRoute(tcpip.Route{
-		Destination: protocolAddress.AddressWithPrefix.Subnet(),
-		Gateway:     "", // No gateway for local network.
-		NIC:         tcpip.NICID(idx),
+	s.Stack.AddRoute(localRoute)
+	return nil
+}
+
+// RemoveInterfaceAddr implements inet.Stack.AddInterfaceAddr.
+func (s *Stack) RemoveInterfaceAddr(idx int32, addr inet.InterfaceAddr) error {
+	nicID := tcpip.NICID(idx)
+	protocolAddress, localRoute, err := addrAndLocalRoute(nicID, addr)
+	if err != nil {
+		return err
+	}
+
+	// Remove local network route.
+	s.Stack.RemoveRoutes(func(rt tcpip.Route) bool {
+		return rt.NIC == localRoute.NIC &&
+			rt.Destination.ID() == localRoute.Destination.ID() &&
+			rt.Destination.Mask() == localRoute.Destination.Mask() &&
+			rt.Gateway == localRoute.Gateway
 	})
+
+	// Remove address from interface.
+	if err := s.Stack.RemoveAddress(nicID, protocolAddress.AddressWithPrefix.Address); err != nil {
+		return syserr.TranslateNetstackError(err).ToError()
+	}
+
 	return nil
 }
 
