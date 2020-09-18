@@ -121,8 +121,23 @@ const (
 
 // Constants from uapi/linux/fsverity.h.
 const (
-	FS_IOC_ENABLE_VERITY = 1082156677
+	FS_IOC_ENABLE_VERITY  = 1082156677
+	FS_IOC_MEASURE_VERITY = 3221513862
 )
+
+// DigestMetadata is a helper struct for VerityDigest.
+//
+// +marshal
+type DigestMetadata struct {
+	DigestAlgorithm uint16
+	DigestSize      uint16
+}
+
+// VerityDigest is struct from uapi/linux/fsverity.h.
+type VerityDigest struct {
+	Metadata DigestMetadata
+	Digest   []byte
+}
 
 // IOC outputs the result of _IOC macro in asm-generic/ioctl.h.
 func IOC(dir, typ, nr, size uint32) uint32 {

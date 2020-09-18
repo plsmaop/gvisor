@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync/atomic"
+	"unsafe"
 
 	"gvisor.dev/gvisor/pkg/abi/linux"
 	"gvisor.dev/gvisor/pkg/context"
@@ -599,6 +600,46 @@ func (fd *fileDescription) enableVerity(ctx context.Context, uio usermem.IO, arg
 	return 0, nil
 }
 
+// measureVerity returns the root hash of fd, saved in args[2].
+func (fd *fileDescription) measureVerity(ctx context.Context, uio usermem.IO, args arch.SyscallArguments) (uintptr, error) {
+	t := kernel.TaskFromContext(ctx)
+	var metadata linux.DigestMetadata
+
+	// fd.d.rootHash should have been set when we open the file, if runtime
+	// enable is not allowed. It should have already been verified.
+	// In allowRuntimeEnable mode, the root hash should have been set when
+	// the file is enabled. If root hash is missing, the file is not yet
+	// enabled.
+	if len(fd.d.rootHash) == 0 {
+		if fd.d.fs.allowRuntimeEnable {
+			return 0, syserror.ENODATA
+		} else {
+			return 0, alertIntegrityViolation(syserror.ENODATA, "Ioctl measureVerity: no root hash found")
+		}
+	}
+
+	// The first part of VerityDigest is the metadata.
+	if _, err := metadata.CopyIn(t, args[2].Pointer()); err != nil {
+		return 0, err
+	}
+	if metadata.DigestSize < uint16(len(fd.d.rootHash)) {
+		return 0, syserror.EOVERFLOW
+	}
+
+	// Populate the output digest size, since DigestSize is both input and
+	// output.
+	metadata.DigestSize = uint16(len(fd.d.rootHash))
+
+	// First copy the metadata.
+	if _, err := metadata.CopyOut(t, args[2].Pointer()); err != nil {
+		return 0, err
+	}
+
+	// Now copy the root hash bytes to the memory after metadata.
+	_, err := t.CopyOutBytes(usermem.Addr(uintptr(args[2].Pointer())+unsafe.Sizeof(metadata)), fd.d.rootHash)
+	return 0, err
+}
+
 func (fd *fileDescription) getFlags(ctx context.Context, uio usermem.IO, args arch.SyscallArguments) (uintptr, error) {
 	f := int32(0)
 
@@ -619,10 +660,12 @@ func (fd *fileDescription) Ioctl(ctx context.Context, uio usermem.IO, args arch.
 	switch cmd := args[1].Uint(); cmd {
 	case linux.FS_IOC_ENABLE_VERITY:
 		return fd.enableVerity(ctx, uio, args)
+	case linux.FS_IOC_MEASURE_VERITY:
+		return fd.measureVerity(ctx, uio, args)
 	case linux.FS_IOC_GETFLAGS:
 		return fd.getFlags(ctx, uio, args)
 	default:
-		return fd.lowerFD.Ioctl(ctx, uio, args)
+		return 0, syserror.ENOSYS
 	}
 }
 
