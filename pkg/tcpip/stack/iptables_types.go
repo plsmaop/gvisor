@@ -260,6 +260,18 @@ func (fl IPHeaderFilter) match(pkt *PacketBuffer, hook Hook, nicName string) boo
 	return true
 }
 
+// NetworkProtocol returns the protocol (IPv4 or IPv6) on to which the header
+// applies.
+func (fl IPHeaderFilter) NetworkProtocol() tcpip.NetworkProtocolNumber {
+	switch len(fl.Src) {
+	case header.IPv4AddressSize:
+		return header.IPv4ProtocolNumber
+	case header.IPv6AddressSize:
+		return header.IPv6ProtocolNumber
+	}
+	panic(fmt.Sprintf("Invalid address in IPHeaderFilter: %s", fl.Src))
+}
+
 // filterAddress returns whether addr matches the filter.
 func filterAddress(addr, mask, filterAddr tcpip.Address, invert bool) bool {
 	matches := true
@@ -285,8 +297,23 @@ type Matcher interface {
 	Match(hook Hook, packet *PacketBuffer, interfaceName string) (matches bool, hotdrop bool)
 }
 
+// A TargetID uniquely identifies a target.
+type TargetID struct {
+	// Name is the target name as stored in the xt_entry_target struct.
+	Name string
+
+	// NetworkProtocol is the protocol to which the target applies.
+	NetworkProtocol tcpip.NetworkProtocolNumber
+
+	// Revision is the version of the target.
+	Revision int
+}
+
 // A Target is the interface for taking an action for a packet.
 type Target interface {
+	// ID uniquely identifies the Target.
+	ID() TargetID
+
 	// Action takes an action on the packet and returns a verdict on how
 	// traversal should (or should not) continue. If the return value is
 	// Jump, it also returns the index of the rule to jump to.

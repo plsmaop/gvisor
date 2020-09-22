@@ -184,10 +184,10 @@ func modifyEntries6(stk *stack.Stack, optVal []byte, replace *linux.IPTReplace, 
 			nflog("entry doesn't have enough room for its target (only %d bytes remain)", len(optVal))
 			return nil, syserr.ErrInvalidArgument
 		}
-		target, err := parseTarget(filter, optVal[:targetSize])
-		if err != nil {
-			nflog("failed to parse target: %v", err)
-			return nil, syserr.ErrInvalidArgument
+		target, targetErr := parseTarget(filter, optVal[:targetSize], true /* ipv6 */)
+		if targetErr != nil {
+			nflog("failed to parse target: %v", targetErr)
+			return nil, targetErr
 		}
 		optVal = optVal[targetSize:]
 

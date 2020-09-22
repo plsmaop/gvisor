@@ -117,6 +117,32 @@ TEST(IPTablesBasic, OriginalDstErrors) {
               SyscallFailsWithErrno(ENOTCONN));
 }
 
+TEST(IPTablesBasic, GetRevision) {
+  SKIP_IF(!ASSERT_NO_ERRNO_AND_VALUE(HaveCapability(CAP_NET_RAW)));
+
+  int sock;
+  ASSERT_THAT(sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP),
+              SyscallSucceeds());
+
+  constexpr char kTarget[] = "REDIRECT";
+  struct xt_get_revision rev = {};
+  snprintf(rev.name, XT_EXTENSION_MAXNAMELEN, "%s", kTarget);
+  socklen_t rev_len = sizeof(rev);
+
+  // Revision 0 exists.
+  rev.revision = 0;
+  EXPECT_THAT(
+      getsockopt(sock, SOL_IP, IPT_SO_GET_REVISION_TARGET, &rev, &rev_len),
+      SyscallSucceeds());
+  EXPECT_EQ(rev.revision, 0);
+
+  // Revisions > 0 don't exist.
+  rev.revision = 1;
+  EXPECT_THAT(
+      getsockopt(sock, SOL_IP, IPT_SO_GET_REVISION_TARGET, &rev, &rev_len),
+      SyscallFailsWithErrno(EPROTONOSUPPORT));
+}
+
 // Fixture for iptables tests.
 class IPTablesTest : public ::testing::Test {
  protected:
