@@ -62,6 +62,7 @@ type runData struct {
 // KVM represents a lightweight VM context.
 type KVM struct {
 	platform.NoCPUPreemptionDetection
+	platform.UseHostGlobalMemoryBarrier
 
 	// machine is the backing VM.
 	machine *machine

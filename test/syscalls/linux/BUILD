@@ -1155,6 +1155,23 @@ cc_binary(
 )
 
 cc_binary(
+    name = "membarrier_test",
+    testonly = 1,
+    srcs = ["membarrier.cc"],
+    linkstatic = 1,
+    deps = [
+        gtest,
+        "//test/util:cleanup",
+        "//test/util:logging",
+        "//test/util:memory_util",
+        "//test/util:posix_error",
+        "//test/util:test_main",
+        "//test/util:test_util",
+        "//test/util:thread_util",
+    ],
+)
+
+cc_binary(
     name = "mempolicy_test",
     testonly = 1,
     srcs = ["mempolicy.cc"],
