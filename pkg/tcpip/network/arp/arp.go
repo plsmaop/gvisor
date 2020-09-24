@@ -16,13 +16,10 @@
 // IPv4 addresses into link-local MAC addresses, and advertises IPv4
 // addresses of its stack with the local network.
 //
-// To use it in the networking stack, pass arp.NewProtocol() as one of the
-// network protocols when calling stack.New. Then add an "arp" address to every
-// NIC on the stack that should respond to ARP requests. That is:
-//
-//	if err := s.AddAddress(1, arp.ProtocolNumber, "arp"); err != nil {
-//		// handle err
-//	}
+// To use it in the networking stack, pass arp.NewProtocol as one of the
+// network protocol factorise when calling stack.New. Then add the address "arp"
+// to every NIC on the stack that should respond to ARP requests. See
+// ProtocolAddress for more details.
 package arp
 
 import (
@@ -245,6 +242,6 @@ func (*protocol) ReturnError(*stack.Route, tcpip.ICMPReason, *stack.PacketBuffer
 }
 
 // NewProtocol returns an ARP network protocol.
-func NewProtocol() stack.NetworkProtocol {
+func NewProtocol(*stack.Stack) stack.NetworkProtocol {
 	return &protocol{}
 }

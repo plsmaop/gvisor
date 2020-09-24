@@ -236,7 +236,7 @@ func (*fakeNetworkProtocol) Parse(pkt *stack.PacketBuffer) (tcpip.TransportProto
 	return tcpip.TransportProtocolNumber(hdr[protocolNumberOffset]), true, true
 }
 
-func fakeNetFactory() stack.NetworkProtocol {
+func fakeNetFactory(*stack.Stack) stack.NetworkProtocol {
 	return &fakeNetworkProtocol{}
 }
 
@@ -273,7 +273,7 @@ func TestNetworkReceive(t *testing.T) {
 	// addresses attached to it: 1 & 2.
 	ep := channel.New(10, defaultMTU, "")
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 	if err := s.CreateNIC(1, ep); err != nil {
 		t.Fatal("CreateNIC failed:", err)
@@ -433,7 +433,7 @@ func TestNetworkSend(t *testing.T) {
 	// existing nic.
 	ep := channel.New(10, defaultMTU, "")
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 	if err := s.CreateNIC(1, ep); err != nil {
 		t.Fatal("NewNIC failed:", err)
@@ -460,7 +460,7 @@ func TestNetworkSendMultiRoute(t *testing.T) {
 	// addresses per nic, the first nic has odd address, the second one has
 	// even addresses.
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 
 	ep1 := channel.New(10, defaultMTU, "")
@@ -560,7 +560,7 @@ func TestAttachToLinkEndpointImmediately(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			s := stack.New(stack.Options{
-				NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+				NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 			})
 
 			e := linkEPWithMockedAttach{
@@ -579,7 +579,7 @@ func TestAttachToLinkEndpointImmediately(t *testing.T) {
 
 func TestDisableUnknownNIC(t *testing.T) {
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 
 	if err := s.DisableNIC(1); err != tcpip.ErrUnknownNICID {
@@ -591,7 +591,7 @@ func TestDisabledNICsNICInfoAndCheckNIC(t *testing.T) {
 	const nicID = 1
 
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 
 	e := loopback.New()
@@ -638,7 +638,7 @@ func TestDisabledNICsNICInfoAndCheckNIC(t *testing.T) {
 
 func TestRemoveUnknownNIC(t *testing.T) {
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 
 	if err := s.RemoveNIC(1); err != tcpip.ErrUnknownNICID {
@@ -650,7 +650,7 @@ func TestRemoveNIC(t *testing.T) {
 	const nicID = 1
 
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 
 	e := linkEPWithMockedAttach{
@@ -711,7 +711,7 @@ func TestRouteWithDownNIC(t *testing.T) {
 
 	setup := func(t *testing.T) (*stack.Stack, *channel.Endpoint, *channel.Endpoint) {
 		s := stack.New(stack.Options{
-			NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+			NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 		})
 
 		ep1 := channel.New(1, defaultMTU, "")
@@ -877,7 +877,7 @@ func TestRoutes(t *testing.T) {
 	// addresses per nic, the first nic has odd address, the second one has
 	// even addresses.
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 
 	ep1 := channel.New(10, defaultMTU, "")
@@ -957,7 +957,7 @@ func TestAddressRemoval(t *testing.T) {
 	remoteAddr := tcpip.Address("\x02")
 
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 
 	ep := channel.New(10, defaultMTU, "")
@@ -1004,7 +1004,7 @@ func TestAddressRemovalWithRouteHeld(t *testing.T) {
 	remoteAddr := tcpip.Address("\x02")
 
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 
 	ep := channel.New(10, defaultMTU, "")
@@ -1095,7 +1095,7 @@ func TestEndpointExpiration(t *testing.T) {
 		for _, spoofing := range []bool{true, false} {
 			t.Run(fmt.Sprintf("promiscuous=%t spoofing=%t", promiscuous, spoofing), func(t *testing.T) {
 				s := stack.New(stack.Options{
-					NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+					NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 				})
 
 				ep := channel.New(10, defaultMTU, "")
@@ -1253,7 +1253,7 @@ func TestEndpointExpiration(t *testing.T) {
 
 func TestPromiscuousMode(t *testing.T) {
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 
 	ep := channel.New(10, defaultMTU, "")
@@ -1305,7 +1305,7 @@ func TestSpoofingWithAddress(t *testing.T) {
 	dstAddr := tcpip.Address("\x03")
 
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 
 	ep := channel.New(10, defaultMTU, "")
@@ -1371,7 +1371,7 @@ func TestSpoofingNoAddress(t *testing.T) {
 	dstAddr := tcpip.Address("\x02")
 
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 
 	ep := channel.New(10, defaultMTU, "")
@@ -1434,7 +1434,7 @@ func verifyRoute(gotRoute, wantRoute stack.Route) error {
 
 func TestOutgoingBroadcastWithEmptyRouteTable(t *testing.T) {
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 
 	ep := channel.New(10, defaultMTU, "")
@@ -1477,7 +1477,7 @@ func TestOutgoingBroadcastWithRouteTable(t *testing.T) {
 
 	// Create a new stack with two NICs.
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 	ep := channel.New(10, defaultMTU, "")
 	if err := s.CreateNIC(1, ep); err != nil {
@@ -1578,7 +1578,7 @@ func TestMulticastOrIPv6LinkLocalNeedsNoRoute(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s := stack.New(stack.Options{
-				NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+				NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 			})
 
 			ep := channel.New(10, defaultMTU, "")
@@ -1635,8 +1635,8 @@ func TestMulticastOrIPv6LinkLocalNeedsNoRoute(t *testing.T) {
 
 func TestNetworkOption(t *testing.T) {
 	s := stack.New(stack.Options{
-		NetworkProtocols:   []stack.NetworkProtocol{fakeNetFactory()},
-		TransportProtocols: []stack.TransportProtocol{},
+		NetworkProtocols:   []stack.NetworkProtocolFactory{fakeNetFactory},
+		TransportProtocols: []stack.TransportProtocolFactory{},
 	})
 
 	opt := tcpip.DefaultTTLOption(5)
@@ -1662,7 +1662,7 @@ func TestGetMainNICAddressAddPrimaryNonPrimary(t *testing.T) {
 					for never := 0; never < 3; never++ {
 						t.Run(fmt.Sprintf("never=%d", never), func(t *testing.T) {
 							s := stack.New(stack.Options{
-								NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+								NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 							})
 							ep := channel.New(10, defaultMTU, "")
 							if err := s.CreateNIC(1, ep); err != nil {
@@ -1729,7 +1729,7 @@ func TestGetMainNICAddressAddPrimaryNonPrimary(t *testing.T) {
 
 func TestGetMainNICAddressAddRemove(t *testing.T) {
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 	ep := channel.New(10, defaultMTU, "")
 	if err := s.CreateNIC(1, ep); err != nil {
@@ -1814,7 +1814,7 @@ func verifyAddresses(t *testing.T, expectedAddresses, gotAddresses []tcpip.Proto
 func TestAddAddress(t *testing.T) {
 	const nicID = 1
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 	ep := channel.New(10, defaultMTU, "")
 	if err := s.CreateNIC(nicID, ep); err != nil {
@@ -1841,7 +1841,7 @@ func TestAddAddress(t *testing.T) {
 func TestAddProtocolAddress(t *testing.T) {
 	const nicID = 1
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 	ep := channel.New(10, defaultMTU, "")
 	if err := s.CreateNIC(nicID, ep); err != nil {
@@ -1875,7 +1875,7 @@ func TestAddProtocolAddress(t *testing.T) {
 func TestAddAddressWithOptions(t *testing.T) {
 	const nicID = 1
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 	ep := channel.New(10, defaultMTU, "")
 	if err := s.CreateNIC(nicID, ep); err != nil {
@@ -1906,7 +1906,7 @@ func TestAddAddressWithOptions(t *testing.T) {
 func TestAddProtocolAddressWithOptions(t *testing.T) {
 	const nicID = 1
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 	ep := channel.New(10, defaultMTU, "")
 	if err := s.CreateNIC(nicID, ep); err != nil {
@@ -2027,7 +2027,7 @@ func TestCreateNICWithOptions(t *testing.T) {
 
 func TestNICStats(t *testing.T) {
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 	})
 	ep1 := channel.New(10, defaultMTU, "")
 	if err := s.CreateNIC(1, ep1); err != nil {
@@ -2094,7 +2094,7 @@ func TestNICForwarding(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			s := stack.New(stack.Options{
-				NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+				NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 			})
 			s.SetForwarding(fakeNetNumber, true)
 
@@ -2341,7 +2341,7 @@ func TestNICAutoGenLinkLocalAddr(t *testing.T) {
 				autoGenAddrC: make(chan ndpAutoGenAddrEvent, 1),
 			}
 			opts := stack.Options{
-				NetworkProtocols:     []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols:     []stack.NetworkProtocolFactory{ipv6.NewProtocol},
 				AutoGenIPv6LinkLocal: test.autoGen,
 				NDPDisp:              &ndpDisp,
 				OpaqueIIDOpts:        test.iidOpts,
@@ -2435,7 +2435,7 @@ func TestNoLinkLocalAutoGenForLoopbackNIC(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			opts := stack.Options{
-				NetworkProtocols:     []stack.NetworkProtocol{ipv6.NewProtocol()},
+				NetworkProtocols:     []stack.NetworkProtocolFactory{ipv6.NewProtocol},
 				AutoGenIPv6LinkLocal: true,
 				OpaqueIIDOpts:        test.opaqueIIDOpts,
 			}
@@ -2468,7 +2468,7 @@ func TestNICAutoGenAddrDoesDAD(t *testing.T) {
 	}
 	ndpConfigs := stack.DefaultNDPConfigurations()
 	opts := stack.Options{
-		NetworkProtocols:     []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols:     []stack.NetworkProtocolFactory{ipv6.NewProtocol},
 		NDPConfigs:           ndpConfigs,
 		AutoGenIPv6LinkLocal: true,
 		NDPDisp:              &ndpDisp,
@@ -2527,7 +2527,7 @@ func TestNewPEBOnPromotionToPermanent(t *testing.T) {
 		for _, ps := range pebs {
 			t.Run(fmt.Sprintf("%d-to-%d", pi, ps), func(t *testing.T) {
 				s := stack.New(stack.Options{
-					NetworkProtocols: []stack.NetworkProtocol{fakeNetFactory()},
+					NetworkProtocols: []stack.NetworkProtocolFactory{fakeNetFactory},
 				})
 				ep1 := channel.New(10, defaultMTU, "")
 				if err := s.CreateNIC(1, ep1); err != nil {
@@ -2818,8 +2818,8 @@ func TestIPv6SourceAddressSelectionScopeAndSameAddress(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			e := channel.New(0, 1280, linkAddr1)
 			s := stack.New(stack.Options{
-				NetworkProtocols:   []stack.NetworkProtocol{ipv6.NewProtocol()},
-				TransportProtocols: []stack.TransportProtocol{udp.NewProtocol()},
+				NetworkProtocols:   []stack.NetworkProtocolFactory{ipv6.NewProtocol},
+				TransportProtocols: []stack.TransportProtocolFactory{udp.NewProtocol},
 				NDPConfigs: stack.NDPConfigurations{
 					HandleRAs:                  true,
 					AutoGenGlobalAddresses:     true,
@@ -2874,7 +2874,7 @@ func TestAddRemoveIPv4BroadcastAddressOnNICEnableDisable(t *testing.T) {
 
 	e := loopback.New()
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv4.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{ipv4.NewProtocol},
 	})
 	nicOpts := stack.NICOptions{Disabled: true}
 	if err := s.CreateNICWithOptions(nicID, e, nicOpts); err != nil {
@@ -2926,7 +2926,7 @@ func TestLeaveIPv6SolicitedNodeAddrBeforeAddrRemoval(t *testing.T) {
 	const nicID = 1
 
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{ipv6.NewProtocol},
 	})
 	e := channel.New(10, 1280, linkAddr1)
 	if err := s.CreateNIC(1, e); err != nil {
@@ -2987,7 +2987,7 @@ func TestJoinLeaveMulticastOnNICEnableDisable(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			e := loopback.New()
 			s := stack.New(stack.Options{
-				NetworkProtocols: []stack.NetworkProtocol{ipv4.NewProtocol(), ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocolFactory{ipv4.NewProtocol, ipv6.NewProtocol},
 			})
 			nicOpts := stack.NICOptions{Disabled: true}
 			if err := s.CreateNICWithOptions(nicID, e, nicOpts); err != nil {
@@ -3064,7 +3064,7 @@ func TestDoDADWhenNICEnabled(t *testing.T) {
 		dadC: make(chan ndpDADEvent),
 	}
 	opts := stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv6.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{ipv6.NewProtocol},
 		NDPConfigs: stack.NDPConfigurations{
 			DupAddrDetectTransmits: dadTransmits,
 			RetransmitTimer:        retransmitTimer,
@@ -3428,7 +3428,7 @@ func TestOutgoingSubnetBroadcast(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			s := stack.New(stack.Options{
-				NetworkProtocols: []stack.NetworkProtocol{ipv4.NewProtocol(), ipv6.NewProtocol()},
+				NetworkProtocols: []stack.NetworkProtocolFactory{ipv4.NewProtocol, ipv6.NewProtocol},
 			})
 			ep := channel.New(0, defaultMTU, "")
 			if err := s.CreateNIC(nicID1, ep); err != nil {
@@ -3466,7 +3466,7 @@ func TestResolveWith(t *testing.T) {
 	)
 
 	s := stack.New(stack.Options{
-		NetworkProtocols: []stack.NetworkProtocol{ipv4.NewProtocol(), arp.NewProtocol()},
+		NetworkProtocols: []stack.NetworkProtocolFactory{ipv4.NewProtocol, arp.NewProtocol},
 	})
 	ep := channel.New(0, defaultMTU, "")
 	ep.LinkEPCapabilities |= stack.CapabilityResolutionRequired
